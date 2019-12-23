@@ -1,0 +1,83 @@
+STATE init
+  EVENT packet authenticate
+    ACTION sequence
+    ACTION handshake
+
+STATE authenticate
+  ENTER authenticate
+  EVENT packet
+    ACTION sequence
+    ACTION generic
+  EVENT ok autocommit
+
+STATE autocommit
+  ENTER autocommit
+  EVENT packet
+    ACTION sequence
+    ACTION generic
+  EVENT ok isolation
+
+STATE isolation
+  ENTER isolation
+  EVENT packet
+    ACTION sequence
+    ACTION generic
+  EVENT ok connected
+    ACTION connected
+
+STATE connected
+  EVENT query query
+    ACTION query
+  EVENT sent query
+  EVENT close close
+
+STATE query
+  EVENT packet
+    ACTION sequence
+    # ACTION dump
+    ACTION query_response
+  EVENT field_length columndefinition
+    ACTION field_length
+  EVENT ok connected
+    ACTION query_complete
+
+STATE columndefinition
+  ENTER clear
+  EVENT packet
+    ACTION sequence
+    # ACTION dump
+    ACTION columndefinition
+  EVENT done tuple
+
+STATE tuple
+  EVENT packet
+    ACTION sequence
+    # ACTION dump
+    ACTION tuple
+  EVENT done connected
+    ACTION query_complete
+
+DEFAULT error
+  ACTION error
+
+STATE close
+  ENTER close
+
+CONTEXT aiodb.connector.mysql.connection.Context
+HANDLER authenticate aiodb.connector.mysql.connection.act_authenticate
+HANDLER autocommit aiodb.connector.mysql.connection.act_autocommit
+HANDLER clear aiodb.connector.mysql.connection.act_clear
+HANDLER close aiodb.connector.mysql.connection.act_close
+HANDLER columndefinition aiodb.connector.mysql.connection.act_columndefinition
+HANDLER connected aiodb.connector.mysql.connection.act_connected
+HANDLER dump aiodb.connector.mysql.connection.act_dump
+HANDLER error aiodb.connector.mysql.connection.act_error
+HANDLER field_length aiodb.connector.mysql.connection.act_field_length
+HANDLER generic aiodb.connector.mysql.connection.act_generic
+HANDLER handshake aiodb.connector.mysql.connection.act_handshake
+HANDLER isolation aiodb.connector.mysql.connection.act_isolation
+HANDLER query aiodb.connector.mysql.connection.act_query
+HANDLER query_complete aiodb.connector.mysql.connection.act_query_complete
+HANDLER query_response aiodb.connector.mysql.connection.act_query_response
+HANDLER sequence aiodb.connector.mysql.connection.act_sequence
+HANDLER tuple aiodb.connector.mysql.connection.act_tuple
