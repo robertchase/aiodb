@@ -4,11 +4,12 @@ ifeq ($(GIT),)
   GIT := $(HOME)/git
 endif
 
+IMAGE := alpine-python
+
 MOUNT := /opt/git
 VOLUMES := -v=$(GIT):$(MOUNT)
 WORKING := -w $(MOUNT)/aiodb
 PYTHONPATH := -e PYTHONPATH=$(MOUNT)/ergaleia:$(MOUNT)/fsm:.
-IMAGE := alpine-python
 
 DOCKER := docker run --rm -it $(VOLUMES) $(PYTHONPATH) $(WORKING) $(IMAGE)
 
@@ -19,4 +20,4 @@ flake:
 	$(DOCKER) flake8
 
 test:
-	$(DOCKER) pytest $(ARGS)
+	$(DOCKER) pytest aiodb/dao
