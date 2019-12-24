@@ -84,15 +84,15 @@ class Query:
            foreign or primary key matches.
 
             Parameters:
-                table  - DAO of the table to add to the query (1)(4)
-                table2 - path, alias or DAO of table to join (2)
+                table  - Model of the table to add to the query (1)(4)
+                table2 - path, alias or Model of table to join (2)
                 alias  - name of joined table (3)
                 outer  - OUTER join indicator
                          LEFT or RIGHT
 
            Notes:
-               1. The table can be specified as a DAO or as a dot separated
-                  path to a DAO for import. First, foreign keys in 'table'
+               1. The table can be specified as a Model or as a dot separated
+                  path to a Model for import. First, foreign keys in 'table'
                   will be checked for a single matching primary key in one
                   of the tables that is already part of the query. If no
                   match is found, the primary key of 'table' will be matched
@@ -102,12 +102,12 @@ class Query:
                   table to match. Foreign keys from 'table' will be checked
                   first, followed by the primary key.
                3. The 'alias' parameter can be used to prevent collision with
-                  an existing DAO attribute, or to allow the same DAO to be
+                  an existing Model attribute, or to allow the same Model to be
                   joined more than once.
-               4. Any joined DAO is accesible as an attribute of the DAO used
-                  to create the Query object. The default attribute name is
-                  the lower case classname of the DAO. Specifying 'alias' will
-                  override this default.
+               4. Any joined Model is accesible as an attribute of the Model
+                  used to create the Query object. The default attribute name
+                  is the lower case classname of the Model. Specifying 'alias'
+                  will override this default.
 
                   Example of join result structure:
 
@@ -123,7 +123,7 @@ class Query:
                         node = root.node
 
                   In the case of multiple join clauses, each joined instance
-                  will be added to the DAO used to create the Query object.
+                  will be added to the Model  used to create the Query object.
         """
         try:
             table = import_by_path(table)
@@ -215,9 +215,9 @@ class Query:
 def _pair(table, tables, table2=None):
     """Pair 'table' by foreign/primary key to a table in 'tables'
 
-       table - a DAO class
+       table - a Model class
        tables - a list of QueryTables
-       table2 - an alias, path or DAO class matching one of 'tables'; this
+       table2 - an alias, path or Model class matching one of 'tables'; this
                 limits pairing to a single table
 
        return:
@@ -269,13 +269,13 @@ def _pair(table, tables, table2=None):
 def _find_foreign_key_reference(table, tables):
     """Look for a foreign key reference in 'table' to one of 'tables'
 
-       table - a DAO class
-       tables - a list or tuple of DAOs or QueryTables
+       table - a Model class
+       tables - a list or tuple of Models or QueryTables
     """
     try:
         foreign = table._foreign
     except AttributeError:
-        raise TypeError('table must be a DAO or QueryTable')
+        raise TypeError('table must be a Model or QueryTable')
     if len(foreign) == 0:
         return None
     refs = [
@@ -297,8 +297,8 @@ def _find_foreign_key_reference(table, tables):
 def _find_primary_key_reference(table, tables):
     """Look for a primary key reference in 'table' from one of 'tables'
 
-       table - a DAO class
-       tables - a list or tuple of DAOs or QueryTables
+       table - a Model class
+       tables - a list or tuple of Models or QueryTables
     """
     refs = [
         (t, f.name) for t in tables

@@ -1,5 +1,5 @@
-from aiodb.dao.field import Field
-from aiodb.dao.query import Query
+from aiodb.model.field import Field
+from aiodb.model.query import Query
 
 
 __reserved__ = ('query', 'select')
@@ -25,7 +25,7 @@ def quote(name):
     return '{Q}' + name + '{Q}'
 
 
-class DAO:
+class Model:
 
     __TABLENAME__ = None
 
@@ -184,7 +184,7 @@ class DAO:
                   auto-generated primary key.
 
                2. If the insert parameter is True, a new record is INSERTED,
-                  and the primary key of the DAO is not changed.  The new
+                  and the primary key of the Modelis not changed.  The new
                   primary key is available as the cursor's last_id attribute.
 
                3. On UPDATE, only changed fields, if any, are SET.
@@ -216,7 +216,7 @@ class DAO:
             args = [getattr(self, f) for f in fields]
         else:
             if not getattr(self, pk.name):
-                raise Exception('DAO UPDATE requires a primary key')
+                raise Exception('Model UPDATE requires a primary key')
             new = False
             fields = self._fields_to_update
             if fields is None:

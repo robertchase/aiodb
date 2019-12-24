@@ -1,8 +1,8 @@
 import datetime
 import pytest
 
-from aiodb.dao.types import CHAR
-from aiodb.dao.types import String, Integer, Boolean, Date, Datetime, Time
+from aiodb.model.types import CHAR
+from aiodb.model.types import String, Integer, Boolean, Date, Datetime, Time
 
 
 @pytest.mark.parametrize(
@@ -29,7 +29,7 @@ def test_char_parse(length, input, expected, strict):
         (1, '1'),
         ('1', '1'),
         (123.4, '123.4'),
-        (String, "<class 'aiodb.dao.types.String'>"),
+        (String, "<class 'aiodb.model.types.String'>"),
         (None, ValueError),
     ),
 )

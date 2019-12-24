@@ -1,22 +1,22 @@
 import pytest
-from aiodb import DAO, Field
-from aiodb.dao.query import QueryTable
-from aiodb.dao.query import _find_foreign_key_reference
-from aiodb.dao.query import _find_primary_key_reference
-from aiodb.dao.query import _pair
+from aiodb import Model, Field
+from aiodb.model.query import QueryTable
+from aiodb.model.query import _find_foreign_key_reference
+from aiodb.model.query import _find_primary_key_reference
+from aiodb.model.query import _pair
 
 
-class A(DAO):
+class A(Model):
     id = Field(is_primary=True)
 
 
-class B(DAO):
+class B(Model):
     id = Field(is_primary=True)
     a_id = Field(foreign='test_query.A')
     c_id = Field(foreign='test_query.C')
 
 
-class C(DAO):
+class C(Model):
     id = Field(is_primary=True)
     a_id = Field(foreign='test_query.A')
 

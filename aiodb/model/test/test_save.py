@@ -1,6 +1,6 @@
 import pytest
 
-from aiodb import DAO, Field, Integer
+from aiodb import Model, Field, Integer
 
 
 class MockCursor:
@@ -19,7 +19,7 @@ class MockCursor:
         self.last_id = self._last_id
 
 
-class MockTable(DAO):
+class MockTable(Model):
 
     __TABLENAME__ = 'tester'
 

@@ -20,4 +20,4 @@ flake:
 	$(DOCKER) flake8
 
 test:
-	$(DOCKER) pytest aiodb/dao
+	$(DOCKER) pytest aiodb/model

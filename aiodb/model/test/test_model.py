@@ -1,12 +1,12 @@
 import pytest
-from aiodb import DAO, Field
+from aiodb import Model, Field
 from aiodb import ReservedAttributeError, RequiredAttributeError
 from aiodb import NoneValueError, MultiplePrimaryKeysError
 
 
 def test_reserved():
 
-    class test(DAO):
+    class test(Model):
         select = Field()
 
     with pytest.raises(ReservedAttributeError):
@@ -15,7 +15,7 @@ def test_reserved():
 
 def test_name():
 
-    class test(DAO):
+    class test(Model):
         foo = Field(column='select', is_nullable=True)
 
     t = test()
@@ -25,7 +25,7 @@ def test_name():
 
 def test_required():
 
-    class test(DAO):
+    class test(Model):
         test = Field()
 
     with pytest.raises(RequiredAttributeError):
@@ -36,7 +36,7 @@ def test_default():
 
     default = 'abc'
 
-    class test(DAO):
+    class test(Model):
         test = Field(default=default)
 
     t = test()
@@ -47,7 +47,7 @@ def test_default():
 
 def test_is_nullable():
 
-    class test(DAO):
+    class test(Model):
         test = Field()
         nullable = Field(is_nullable=True)
 
@@ -59,7 +59,7 @@ def test_is_nullable():
 
 def test_multiple_primary():
 
-    class test(DAO):
+    class test(Model):
         id = Field(default=0, is_primary=True)
         idd = Field(default=0, is_primary=True)
 
@@ -68,7 +68,7 @@ def test_multiple_primary():
         assert t._primary.name == 'id'
 
 
-class field_test(DAO):
+class field_test(Model):
     a = Field(is_primary=True)
     b = Field()
     c = Field(expression='foo')

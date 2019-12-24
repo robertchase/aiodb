@@ -2,7 +2,7 @@ import datetime
 import decimal
 import json
 
-import aiodb.dao.types as types
+import aiodb.model.types as types
 
 from aiodb.connector.mysql.bit import Bit
 from aiodb.connector.mysql.constants import FIELD_TYPE

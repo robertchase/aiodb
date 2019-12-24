@@ -1,6 +1,6 @@
 from ergaleia import import_by_path
 
-from aiodb.dao.types import String
+from aiodb.model.types import String
 
 
 class Field():
