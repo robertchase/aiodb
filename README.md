@@ -36,8 +36,8 @@ if __name__ == '__main__':
 ```
 
 The two places where the program might block for I/O
-are at `db.cursor()` (where the database connection occurs)
-and at `t.save(cursor)` (where the INSERT occurs);
+are at `db.cursor()` (where the database connection is established)
+and at `t.save(cursor)` (where the INSERT happens);
 both places use `await` to allow other things to occur while the I/O happens.
 
 Here is a sample run. The output is a dictionary representation of the saved `Test` object.

@@ -2,7 +2,7 @@ from aiodb.model.field import Field
 from aiodb.model.query import Query
 
 
-__reserved__ = ('query', 'select')
+__reserved__ = ('delete', 'load', 'query', 'save')
 
 
 class RequiredAttributeError(AttributeError):
@@ -161,35 +161,30 @@ class Model:
         return Query(cls)
 
     @classmethod
-    async def load(cls, cursor, id):
+    async def load(cls, cursor, key):
+        """Load a database row by primary key.
+        """
         q = Query(cls).where(f'{quote(cls._primary.name)}=%s')
-        return await q.execute(cursor, id, one=True)
+        return await q.execute(cursor, key, one=True)
 
     async def save(self, cursor, insert=False):
-        """Save database object by primary key
+        """Save object by primary key
 
-           Parameters:
-               cursor - database cursor
-               insert - bool
-                        if True save object with non-None primary key using
-                        INSERT instead of UPDATE
+           If the primary key has a value, an UPDATE is performed; otherwise,
+           an INSERT is performed and the auto-generated primary key value is
+           added to the object.
 
-           Result:
-               self
+           To force INSERT even if the primary key has a value, set 'insert'
+           to True.
+
+           Returns self.
 
            Notes:
 
-               1. Objects with a None primary key are INSERTED. After the
-                  INSERT, the primary key attribute is set to the
-                  auto-generated primary key.
+               1. On UPDATE, only changed fields, if any, are SET. A list of
+                  update field names is found in the '_updated' attribute.
 
-               2. If the insert parameter is True, a new record is INSERTED,
-                  and the primary key of the Modelis not changed.  The new
-                  primary key is available as the cursor's last_id attribute.
-
-               3. On UPDATE, only changed fields, if any, are SET.
-
-               4. This call will not change expression Fields.
+               2. This call will not change expression Fields.
         """
         pk = self._primary
         self._updated = []
@@ -243,6 +238,29 @@ class Model:
             self._updated = [field.name for field in fields]
 
         return self
+
+    async def insert(self, cursor, key=None):
+        """Insert object
+
+           Insert usually happens automatically when key is NOT specified; this
+           is for the case where you want to specifiy the primary key yourself.
+
+           If 'key' is specified, then the primary key value is set to this
+           value; otherwise, the current value of the primary key is used.
+
+           Returns self.
+        """
+        if key is not None:
+            setattr(self, self._primary.name, key)
+        return await self.save(cursor, insert=True)
+
+    async def delete(self, cursor):
+        """Delete matching row from database by primary key.
+        """
+        stmt = f'DELETE FROM {quote(self.__TABLENAME__)}' + \
+            f' WHERE {quote(self._primary.name)}=%s'
+        stmt = stmt.format(Q=cursor.quote)
+        await cursor.execute(stmt, getattr(self, self._primary.name))
 
     def _cache_field_values(self):
         self._orig = {
