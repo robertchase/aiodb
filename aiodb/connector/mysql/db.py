@@ -27,6 +27,9 @@ class DB:
         self.debug = debug
         self.commit = commit
 
+        self.packet = parser.parse('aiodb.connector.mysql.packet.fsm')
+        self.connection = parser.parse('aiodb.connector.mysql.connection.fsm')
+
     async def cursor(self):
         return await MysqlHandler(self).connect(self.host, self.port)
 
@@ -38,12 +41,10 @@ def trace(state, event, dflt, is_internal):
 class MysqlHandler:
 
     def __init__(self, db):
-        self.packet_fsm = parser.load(
-            'aiodb.connector.mysql.packet.fsm',
-            on_packet=self.on_packet
+        self.packet_fsm = db.packet.compile(
+            on_packet=self.on_packet,
         )
-        self.fsm = parser.load(
-            'aiodb.connector.mysql.connection.fsm',
+        self.fsm = db.connection.compile(
             send=self.send,
             user=db.user,
             password=db.password,
