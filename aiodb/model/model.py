@@ -70,6 +70,8 @@ class Model:
 
     @_classproperty
     def _fields(cls):
+        if hasattr(cls, '_field_cache'):
+            return cls._field_cache
         fields = []
         for name in dir(cls):
             if name.startswith('_'):
@@ -82,6 +84,7 @@ class Model:
                     value.column = name
                 value.name = name
                 fields.append(value)
+        cls._field_cache = fields
         return fields
 
     @classmethod
