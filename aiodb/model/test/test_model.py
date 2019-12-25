@@ -7,7 +7,7 @@ from aiodb import NoneValueError, MultiplePrimaryKeysError
 def test_reserved():
 
     class test(Model):
-        select = Field()
+        query = Field()
 
     with pytest.raises(ReservedAttributeError):
         test()
@@ -102,4 +102,5 @@ def test_db_insert():
 
 def test_db_update():
     t = field_test(a=0, b=0, c=0, d=0)
+    assert sorted(f.name for f in t._db_update) == ['b']
     assert sorted(f.name for f in t._db_update) == ['b']
