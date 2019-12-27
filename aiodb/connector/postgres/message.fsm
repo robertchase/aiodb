@@ -1,0 +1,28 @@
+STATE init
+  ENTER clear
+  EVENT data length
+    ACTION data
+    ACTION type
+
+STATE length
+  ENTER length
+  EVENT data
+    ACTION data
+    ACTION length
+  EVENT complete payload
+
+STATE payload
+  ENTER payload
+  EVENT data
+    ACTION data
+    ACTION payload
+  EVENT complete init
+    ACTION message
+
+CONTEXT aiodb.connector.postgres.message.Context
+HANDLER data aiodb.connector.postgres.message.act_data
+HANDLER clear aiodb.connector.postgres.message.act_clear
+HANDLER type aiodb.connector.postgres.message.act_type
+HANDLER length aiodb.connector.postgres.message.act_length
+HANDLER message aiodb.connector.postgres.message.act_message
+HANDLER payload aiodb.connector.postgres.message.act_payload

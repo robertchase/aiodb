@@ -231,7 +231,7 @@ class Model:
             args.append(getattr(self, pk.name))
 
         stmt = stmt.format(Q=cursor.quote)
-        await cursor.execute(stmt, args)
+        await cursor.execute(stmt, args, is_insert=new, pk=pk.name)
 
         self._cache_field_values()
         if new:

@@ -1,0 +1,42 @@
+STATE init
+  EVENT ready
+    ACTION startup
+  EVENT authentication_md5
+    ACTION md5
+  EVENT authentication_ok startup
+
+STATE startup
+  EVENT parameter_status
+    ACTION parameter
+  EVENT backend_key_data
+    ACTION backend_key_data
+  EVENT ready_for_query connected
+    ACTION connected
+
+STATE connected
+  EVENT query query
+    ACTION query
+
+STATE query
+  EVENT row_description
+    ACTION description
+  EVENT data_row
+    ACTION row
+  EVENT command_complete
+    ACTION complete
+  EVENT ready_for_query connected
+
+DEFAULT error
+  ACTION error
+
+CONTEXT aiodb.connector.postgres.connection.Context
+HANDLER md5 aiodb.connector.postgres.connection.act_md5
+HANDLER parameter aiodb.connector.postgres.connection.act_parameter
+HANDLER backend_key_data aiodb.connector.postgres.connection.act_backend_key_data
+HANDLER connected aiodb.connector.postgres.connection.act_connected
+HANDLER query aiodb.connector.postgres.connection.act_query
+HANDLER description aiodb.connector.postgres.connection.act_description
+HANDLER row aiodb.connector.postgres.connection.act_row
+HANDLER complete aiodb.connector.postgres.connection.act_complete
+HANDLER startup aiodb.connector.postgres.connection.act_startup
+HANDLER error aiodb.connector.postgres.connection.act_error
