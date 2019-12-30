@@ -3,3 +3,5 @@ use <database>: \connect <database>
 
 show tables: \dt
 describe <table>: \d <table>
+
+show roles: \du

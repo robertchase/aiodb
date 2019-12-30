@@ -26,8 +26,10 @@ class DB:
         self.debug = debug
         self.commit = commit
 
-        # self.packet = parser.parse('aiodb.connector.mysql.packet.fsm')
-        # self.connection = parser.parse('aiodb.connector.mysql.connection.fsm')
+        # self.packet = parser.parse(
+        # 'aiodb.connector.mysql.packet.fsm')
+        # self.connection = parser.parse(
+        # 'aiodb.connector.mysql.connection.fsm')
 
     async def cursor(self):
         return await PostgresHandler(self).connect(self.host, self.port)

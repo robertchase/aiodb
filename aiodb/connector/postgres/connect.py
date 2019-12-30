@@ -27,4 +27,5 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.DEBUG)
 
-    print(asyncio.run(main('SELECT * FROM test CROSS JOIN (VALUES (1), (2), (3)) AS Z')))
+    print(asyncio.run(main(
+        'SELECT * FROM test CROSS JOIN (VALUES (1), (2), (3)) AS Z')))

@@ -1,4 +1,4 @@
-.PHONY: bash test cli schema start
+.PHONY: shell test cli schema start
 
 ifeq ($(GIT),)
   GIT := $(HOME)/git
@@ -30,7 +30,7 @@ cli:
 	$(CLI)
 
 schema:
-	$(CLI) -d test -f $(WORKING_DIR)/schema.sql
+	$(CLI) -f $(WORKING_DIR)/schema.sql
 
 start: $(DATA)
 	docker run --rm  -d --name $(POSTGRES) $(NET) $(VOLUMES) -e POSTGRES_PASSWORD=docker -v $(DATA):/var/lib/postgresql/data postgres

@@ -1,21 +1,36 @@
+---DROP DATABASE IF EXISTS "test_postgres";
+---CREATE DATABASE "test_postgres";
+
+---REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM test_postgres;
+---REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM test_postgres;
+---REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public FROM test_postgres;
+---REVOKE USAGE ON SCHEMA public FROM test_postgres;
+
+---DROP ROLE "test_postgres";
+---CREATE ROLE "test_postgres";
+
+---GRANT "test_postgres" TO "test";
+
+\c "test_postgres";
+
 DROP TABLE IF EXISTS "test";
+DROP TYPE IF EXISTS "disposition";
+
 CREATE TYPE disposition AS ENUM ('good', 'bad', 'ugly');
 CREATE TABLE "test" (
-    "a" INT,
+    "id" SERIAL,
+    "a_sin" SMALLINT,
+    "a_int" INTEGER,
+    "a_bin" BIGINT,
+    "e_num" NUMERIC,
+    "e_nu2" NUMERIC(10,2),
     "b" VARCHAR(100),
     "c" TIMESTAMP,
     "d" BOOLEAN,
-    "e" NUMERIC(10,2),
     "f" DATE,
     "g" TIME,
     "h" disposition
 );
-GRANT SELECT ON TABLE test TO foo;
-INSERT INTO "test" VALUES(10, 'eleven', 'now()', '0', 123.45, 'now()', 'now()', 'bad');
 
-DROP TABLE IF EXISTS "simple";
-CREATE TABLE "simple" (
-    "a" INT
-);
-INSERT INTO "simple" VALUES (1), (2), (3);
-GRANT SELECT ON TABLE simple TO foo;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "test" TO "test_postgres";
+GRANT USAGE ON SEQUENCE "test_id_seq" TO "test_postgres";
