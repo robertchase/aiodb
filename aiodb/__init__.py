@@ -5,3 +5,4 @@ from aiodb.model.model import RequiredAttributeError, ReservedAttributeError
 from aiodb.model.model import NoneValueError, MultiplePrimaryKeysError
 from aiodb.model.field import Field
 from aiodb.model.types import String, Integer, Boolean, Date, Datetime
+from aiodb.model.execute import execute
