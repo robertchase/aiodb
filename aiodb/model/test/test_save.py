@@ -9,7 +9,7 @@ class MockCursor:
         self.quote = quote
         self._last_id = last_id
 
-    async def execute(self, stmt, args=None):
+    async def execute(self, stmt, args=None, **kwargs):
         self.query = stmt
         if args is not None:
             if isinstance(args, list):
