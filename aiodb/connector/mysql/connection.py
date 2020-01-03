@@ -2,7 +2,7 @@ import struct
 
 from aiodb.connector.mysql.constants import COMMAND, FIELD_TYPE
 import aiodb.connector.mysql.charset as charset
-import aiodb.connector.mysql.converters as converters
+import aiodb.connector.mysql.serializer as serializer
 import aiodb.connector.mysql.packet as packet
 
 
@@ -115,7 +115,7 @@ def act_columndefinition(context):
             encoding = context.encoding
     else:
         encoding = 'ascii'
-    converter = converters.from_mysql.get(defn.type)
+    converter = serializer.from_mysql.get(defn.type)
 
     def convert(encoding, converter):
         def _convert(value):

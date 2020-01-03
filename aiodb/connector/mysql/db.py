@@ -3,7 +3,7 @@ import logging
 
 from fsm.parser import Parser as parser
 
-from .converters import to_mysql
+from .serializer import to_mysql
 from aiodb import Cursor
 
 

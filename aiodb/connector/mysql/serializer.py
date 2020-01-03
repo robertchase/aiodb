@@ -2,10 +2,34 @@ import datetime
 import decimal
 import json
 
-import aiodb.model.types as types
-
 from aiodb.connector.mysql.bit import Bit
 from aiodb.connector.mysql.constants import FIELD_TYPE
+
+
+def to_datetime(value):
+    try:
+        return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
+    except ValueError:
+        pass
+    return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+
+
+def to_date(value):
+    return datetime.datetime.strptime(value, '%Y-%m-%d').date()
+
+
+def to_time(value):
+    try:
+        time, partial = value.split('.')
+        microseconds = int((partial + '0000000')[:6])
+    except ValueError:
+        time = value
+        microseconds = 0
+    hours, minutes, seconds = (int(t) for t in time.split(':'))
+    if hours <= 24:
+        return datetime.time(hours, minutes, seconds, microseconds)
+    return datetime.timedelta(hours=hours, minutes=minutes,
+                              seconds=seconds, microseconds=microseconds)
 
 
 def bytes_to_int(value):
@@ -21,10 +45,10 @@ from_mysql = {
     FIELD_TYPE.LONGLONG: int,
     FIELD_TYPE.FLOAT: float,
     FIELD_TYPE.DOUBLE: float,
-    FIELD_TYPE.TIMESTAMP: types.Datetime.parse,
-    FIELD_TYPE.DATE: types.Date.parse,
-    FIELD_TYPE.TIME: types.Time.parse,
-    FIELD_TYPE.DATETIME: types.Datetime.parse,
+    FIELD_TYPE.TIMESTAMP: to_datetime,
+    FIELD_TYPE.DATE: to_date,
+    FIELD_TYPE.TIME: to_time,
+    FIELD_TYPE.DATETIME: to_datetime,
     FIELD_TYPE.YEAR: int,
     FIELD_TYPE.JSON: json.loads,
     FIELD_TYPE.NEWDECIMAL: decimal.Decimal,

@@ -1,7 +1,7 @@
 import datetime
 import pytest
 
-import aiodb.connector.mysql.converters as converters
+import aiodb.connector.mysql.serializer as serializer
 
 
 @pytest.mark.parametrize(
@@ -30,7 +30,7 @@ import aiodb.connector.mysql.converters as converters
     ),
 )
 def test_string(input, expected):
-    assert converters.from_string(input) == expected
+    assert serializer.from_string(input) == expected
 
 
 date_string = '2020-01-02'
@@ -47,9 +47,9 @@ date_datetime = datetime.datetime(2020, 1, 2, 12)
 def test_from_date(input, expected):
     if expected in (ValueError, TypeError):
         with pytest.raises(expected):
-            converters.from_date(input)
+            serializer.from_date(input)
     else:
-        assert converters.from_date(input) == expected
+        assert serializer.from_date(input) == expected
 
 
 datetime_string = '2020-01-02 11:12:13.000000'
@@ -66,9 +66,9 @@ datetime_datetime = datetime.datetime(2020, 1, 2, 11, 12, 13)
 def test_from_datetime(input, expected):
     if expected in (ValueError, TypeError):
         with pytest.raises(expected):
-            converters.from_datetime(input)
+            serializer.from_datetime(input)
     else:
-        assert converters.from_datetime(input) == expected
+        assert serializer.from_datetime(input) == expected
 
 
 time_string = '01:01:01'
@@ -88,9 +88,9 @@ time_mu_delta = datetime.timedelta(seconds=3600 + 60 + 1, microseconds=123)
 def test_from_timedelta(input, expected):
     if expected in (ValueError, TypeError):
         with pytest.raises(expected):
-            converters.from_timedelta(input)
+            serializer.from_timedelta(input)
     else:
-        assert converters.from_timedelta(input) == expected
+        assert serializer.from_timedelta(input) == expected
 
 
 @pytest.mark.parametrize(
@@ -102,9 +102,9 @@ def test_from_timedelta(input, expected):
 def test_from_time(input, expected):
     if expected in (ValueError, TypeError):
         with pytest.raises(expected):
-            converters.from_time(input)
+            serializer.from_time(input)
     else:
-        assert converters.from_time(input) == expected
+        assert serializer.from_time(input) == expected
 
 
 @pytest.mark.parametrize(
@@ -115,4 +115,4 @@ def test_from_time(input, expected):
     ),
 )
 def test_from_set(input, expected):
-    assert converters.from_set(input) in expected
+    assert serializer.from_set(input) in expected
