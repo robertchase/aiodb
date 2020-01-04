@@ -12,7 +12,7 @@ class QueryTable:
                  join_table_name=None, join_column_name=None):
 
         self.cls = cls
-        self.alias = alias or cls._alias()
+        self.alias = alias or cls._camel
         self.column_count = len(cls._fields)
 
         self.join_type = join_type
@@ -132,7 +132,7 @@ class Query:
         except ModuleNotFoundError:
             raise TypeError("unable to load '{}'".format(table))
         if alias is None:
-            alias = table._alias()
+            alias = table._camel
         if alias in [t.alias for t in self._tables]:
             raise ValueError(f"duplicate table '{alias}'")
 

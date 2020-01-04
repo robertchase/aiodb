@@ -7,7 +7,7 @@ from aiodb import NoneValueError, MultiplePrimaryKeysError
 def test_reserved():
 
     class test(Model):
-        query = Field()
+        save = Field()
 
     with pytest.raises(ReservedAttributeError):
         test()

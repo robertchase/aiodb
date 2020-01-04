@@ -2,7 +2,7 @@ from aiodb.model.field import Field
 from aiodb.model.query import Query
 
 
-__reserved__ = ('delete', 'load', 'query', 'save')
+__reserved__ = ('delete', 'load', 'save')
 
 
 class RequiredAttributeError(AttributeError):
@@ -76,6 +76,8 @@ class Model:
         for name in dir(cls):
             if name.startswith('_'):
                 continue
+            if name == 'query':
+                continue
             value = getattr(cls, name)
             if isinstance(value, Field):
                 if name in __reserved__:
@@ -123,8 +125,8 @@ class Model:
     def _class(cls):
         return cls
 
-    @classmethod
-    def _alias(cls):
+    @_classproperty
+    def _camel(cls):
         camel = cls.__name__
         return ''.join(
             [
@@ -159,7 +161,7 @@ class Model:
             else:
                 values[name] = attr.parse(value)
 
-    @classmethod
+    @_classproperty
     def query(cls):
         return Query(cls)
 
