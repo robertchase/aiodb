@@ -1,32 +1,7 @@
 import struct
 
-import aiodb.connector.postgres.column as column
-
-
-TAG_PASSWORD = 'p'
-TAG_AUTHENTICATION = 'R'
-TAG_PARAMETER_STATUS = 'S'
-TAG_BACKEND_KEY_DATA = 'K'
-TAG_READY_FOR_QUERY = 'Z'
-TAG_QUERY = 'Q'
-TAG_ROW_DESCRIPTION = 'T'
-TAG_DATA_ROW = 'D'
-TAG_COMMAND_COMPLETE = 'C'
-TAG_COMMAND_ERROR = 'E'
-
-NAME_PARAMETER_STATUS = 'parameter_status'
-NAME_BACKEND_KEY_DATA = 'backend_key_data'
-NAME_READY_FOR_QUERY = 'ready_for_query'
-NAME_ROW_DESCRIPTION = 'row_description'
-NAME_DATA_ROW = 'data_row'
-NAME_COMMAND_COMPLETE = 'command_complete'
-NAME_COMMAND_ERROR = 'error'
-
-AUTHENTICATION_OK = 0
-AUTHENTICATION_MD5_PASSWORD = 5
-
-NAME_AUTHENTICATION_OK = 'authentication_ok'
-NAME_AUTHENTICATION_MD5_PASSWORD = 'authentication_md5'
+import aiodb.connector.postgres.constants as constants
+from aiodb.connector.postgres.serializer import from_postgres
 
 
 class Message:
@@ -122,14 +97,14 @@ def act_type(context):
 
 def parse(tag, payload):
     return {
-        TAG_AUTHENTICATION: parse_authentication,
-        TAG_PARAMETER_STATUS: parse_parameter_status,
-        TAG_BACKEND_KEY_DATA: parse_backend_key_data,
-        TAG_READY_FOR_QUERY: parse_ready_for_query,
-        TAG_ROW_DESCRIPTION: parse_row_description,
-        TAG_DATA_ROW: parse_data_row,
-        TAG_COMMAND_COMPLETE: parse_command_complete,
-        TAG_COMMAND_ERROR: parse_command_error,
+        constants.TAG_AUTHENTICATION: parse_authentication,
+        constants.TAG_PARAMETER_STATUS: parse_parameter_status,
+        constants.TAG_BACKEND_KEY_DATA: parse_backend_key_data,
+        constants.TAG_READY_FOR_QUERY: parse_ready_for_query,
+        constants.TAG_ROW_DESCRIPTION: parse_row_description,
+        constants.TAG_DATA_ROW: parse_data_row,
+        constants.TAG_COMMAND_COMPLETE: parse_command_complete,
+        constants.TAG_COMMAND_ERROR: parse_command_error,
     }[tag](payload)
     raise Exception('Unhandled packet type {}'.format(tag))
 
@@ -138,10 +113,10 @@ def parse_authentication(payload):
     kwargs = {}
     name = None
     auth_type = struct.unpack_from('>I', payload, 0)[0]
-    if auth_type == AUTHENTICATION_OK:
-        name = NAME_AUTHENTICATION_OK
-    elif auth_type == AUTHENTICATION_MD5_PASSWORD:
-        name = NAME_AUTHENTICATION_MD5_PASSWORD
+    if auth_type == constants.AUTHENTICATION_OK:
+        name = constants.NAME_AUTHENTICATION_OK
+    elif auth_type == constants.AUTHENTICATION_MD5_PASSWORD:
+        name = constants.NAME_AUTHENTICATION_MD5_PASSWORD
         kwargs['salt'] = payload[4:]
     else:
         raise Exception('unhandled authentication type: {}'.format(auth_type))
@@ -151,7 +126,7 @@ def parse_authentication(payload):
 def parse_parameter_status(payload):
     key, value = payload[:-1].split(b'\x00')
     return Message(
-        NAME_PARAMETER_STATUS,
+        constants.NAME_PARAMETER_STATUS,
         key=key.decode(),
         value=value.decode(),
     )
@@ -160,7 +135,7 @@ def parse_parameter_status(payload):
 def parse_backend_key_data(payload):
     process_id, secret_key = struct.unpack('>II', payload)
     return Message(
-        NAME_BACKEND_KEY_DATA,
+        constants.NAME_BACKEND_KEY_DATA,
         process_id=process_id,
         secret_key=secret_key,
     )
@@ -169,9 +144,26 @@ def parse_backend_key_data(payload):
 def parse_ready_for_query(payload):
     status = chr(payload[0])
     return Message(
-        NAME_READY_FOR_QUERY,
+        constants.NAME_READY_FOR_QUERY,
         status=status
     )
+
+
+class Descriptor:
+
+    def __repr__(self):
+        return f'column description: {self.__dict__}'
+
+    @classmethod
+    def parse(cls, payload):
+        self = cls()
+        name_index = payload.find(b'\x00')
+        self.name = payload[:name_index].decode()
+        self.table_id, self.column_id, self.data_type_id, \
+            self.data_type_size, self.type_modifier, self.format_code = \
+            struct.unpack_from('>IHIHIH', payload, name_index + 1)
+        self.convert = from_postgres(self.data_type_id)
+        return payload[name_index + 1 + 18:], self
 
 
 def parse_row_description(payload):
@@ -179,10 +171,10 @@ def parse_row_description(payload):
     payload = payload[2:]
     columns = []
     for i in range(count):
-        payload, descriptor = column.Descriptor.parse(payload)
+        payload, descriptor = Descriptor.parse(payload)
         columns.append(descriptor)
     return Message(
-        NAME_ROW_DESCRIPTION,
+        constants.NAME_ROW_DESCRIPTION,
         columns=columns,
     )
 
@@ -201,20 +193,20 @@ def parse_data_row(payload):
             index += size
         columns.append(value)
     return Message(
-        NAME_DATA_ROW,
+        constants.NAME_DATA_ROW,
         columns=columns,
     )
 
 
 def parse_command_complete(payload):
     return Message(
-        NAME_COMMAND_COMPLETE,
+        constants.NAME_COMMAND_COMPLETE,
     )
 
 
 def parse_command_error(payload):
     e = {e[0]: e[1:] for e in payload.decode().split('\x00') if len(e)}
     return Message(
-        NAME_COMMAND_ERROR,
+        constants.NAME_COMMAND_ERROR,
         **e
     )

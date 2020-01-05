@@ -5,6 +5,7 @@ import logging
 from fsm.parser import Parser as parser
 
 from aiodb import Cursor
+from aiodb.connector.postgres.serializer import to_postgres
 
 
 log = logging.getLogger(__name__)
@@ -99,13 +100,12 @@ class PostgresHandler:
         if args is not None:
             if isinstance(args, (list, tuple)):
                 if len(args) == 1:
-                    # TODO: properly escape args
-                    args = f"'{args[0]}'"
+                    args = to_postgres(args)
                 else:
-                    # TODO: properly escape args
-                    args = tuple(f"'{arg}'" for arg in args)
+                    args = tuple(to_postgres(arg) for arg in args)
             else:
-                args = args
+                print('here')
+                args = to_postgres(args)
             query = query % args
         cur.query_after = query
 

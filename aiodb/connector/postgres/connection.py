@@ -1,5 +1,6 @@
 import hashlib
 
+import aiodb.connector.postgres.constants as constants
 import aiodb.connector.postgres.message as message
 
 
@@ -31,7 +32,7 @@ def act_md5(context, msg):
             data.encode()
         ).hexdigest().encode() + msg.salt
     ).hexdigest()
-    context.send(message.serialize(message.TAG_PASSWORD, hash))
+    context.send(message.serialize(constants.TAG_PASSWORD, hash))
 
 
 def act_parameter(context, msg):
@@ -51,24 +52,15 @@ def act_query(context, query):
     context.is_running = True
     context.row_description = []
     context.rows = []
-    context.send(message.serialize(message.TAG_QUERY, query))
+    context.send(message.serialize(constants.TAG_QUERY, query))
 
 
 def act_description(context, msg):
     context.row_description = msg.columns
+    print(msg.columns)  # TODO: remove
 
 
 def act_row(context, msg):
-    # print('ROW', msg.columns)
-    # print('DESCRIPTION', context.row_description)
-    '''
-    context.rows.append({
-        d.name: d.convert(v) for d, v in zip(
-            context.row_description,
-            msg.columns,
-        )
-    })
-    '''
     context.rows.append([
         d.convert(v) for d, v in zip(
             context.row_description,

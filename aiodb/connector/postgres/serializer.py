@@ -2,6 +2,39 @@ import datetime
 import decimal
 import random
 
+import aiodb.connector.postgres.constants as constants
+
+
+def to_boolean(value):
+    return True if value == 't' else False
+
+
+def to_timestamp(value):
+    return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
+
+
+def to_time(value):
+    return datetime.datetime.strptime(value, '%H:%M:%S.%f').time()
+
+
+def to_date(value):
+    return datetime.datetime.strptime(value, '%Y-%m-%d').date()
+
+
+def from_postgres(data_type_id):
+    return {
+        constants.TYPE_BOOLEAN: to_boolean,
+        constants.TYPE_INT2: int,
+        constants.TYPE_INT4: int,
+        constants.TYPE_INT8: int,
+        constants.TYPE_NUMERIC: decimal.Decimal,
+        constants.TYPE_FLOAT4: float,
+        constants.TYPE_FLOAT8: float,
+        constants.TYPE_TIMESTAMP: to_timestamp,
+        constants.TYPE_TIME: to_time,
+        constants.TYPE_DATE: to_date,
+    }.get(data_type_id, lambda x: x)
+
 
 def quote(val):
     val = str(val)
@@ -22,24 +55,8 @@ def from_float(val):
     return quote('%.15g' % val)
 
 
-def from_string(val):
-    escape = val.translate(
-        str.maketrans({
-            "'": "''",
-            '\\': '\\\\',
-            '\0': '\\0',
-            '\b': '\\b',
-            '\n': '\\n',
-            '\r': '\\r',
-            '\t': '\\t',
-            # ctrl z: windows end-of-file; escaped z deprecated in python
-            '\x1a': '\\x1a',
-        }))
-    return f"'{escape}'"
-
-
 def from_bytes(val):
-    return from_string(val.decode('ascii', 'surrogateescape'))
+    return quote(val.decode('ascii', 'surrogateescape'))
 
 
 def from_date(val):
@@ -71,7 +88,7 @@ def from_timedelta(val):
 
 
 def from_set(val):
-    return from_string(','.join([str(item) for item in val]))
+    return quote(','.join([str(item) for item in val]))
 
 
 def to_postgres(val):
@@ -82,7 +99,7 @@ def to_postgres(val):
         bool: from_bool,
         int: quote,
         float: from_float,
-        str: from_string,
+        str: quote,
         bytes: from_bytes,
         datetime.date: from_date,
         datetime.datetime: from_datetime,
