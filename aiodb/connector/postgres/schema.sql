@@ -26,9 +26,9 @@ CREATE TABLE "test" (
     "e_nu2" NUMERIC(10,2),
     "f_rea" REAL,
     "f_dou" DOUBLE PRECISION,
-    --- "g_sms" SMALLSERIAL,
-    --- "g_ser" SERIAL,
-    --- "g_bis" BIGSERIAL,
+    "g_sms" SMALLSERIAL,
+    "g_ser" SERIAL,
+    "g_bis" BIGSERIAL,
     "b" VARCHAR(100),
     "c" TIMESTAMP,
     "d" BOOLEAN,
@@ -39,3 +39,6 @@ CREATE TABLE "test" (
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "test" TO "test_postgres";
 GRANT USAGE ON SEQUENCE "test_id_seq" TO "test_postgres";
+GRANT USAGE ON SEQUENCE "test_g_sms_seq" TO "test_postgres";
+GRANT USAGE ON SEQUENCE "test_g_ser_seq" TO "test_postgres";
+GRANT USAGE ON SEQUENCE "test_g_bis_seq" TO "test_postgres";

@@ -67,3 +67,18 @@ async def test_real(cursor):
 @pytest.mark.asyncio
 async def test_double(cursor):
     await _handle(cursor, 'f_dou', 1.234)
+
+
+@pytest.mark.asyncio
+async def test_smallserial(cursor):
+    await _handle(cursor, 'g_sms', 100)
+
+
+@pytest.mark.asyncio
+async def test_serial(cursor):
+    await _handle(cursor, 'g_ser', 100)
+
+
+@pytest.mark.asyncio
+async def test_bigserial(cursor):
+    await _handle(cursor, 'g_bis', 100)
