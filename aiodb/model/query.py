@@ -163,8 +163,8 @@ class Query:
 
         stmt = 'SELECT '
         stmt += ', '.join(
-            '{Q}{table}{Q}.{Q}{column}{Q} AS {Q}{alias}{Q}'.format(
-                Q=quote, table=table.alias, column=fld.column, alias=fld.name)
+            '{column} AS {Q}{alias}{Q}'.format(
+                Q=quote, column=_column(table, fld, quote), alias=fld.name)
             for table in self._tables
             for fld in table._fields
         )
@@ -210,6 +210,14 @@ class Query:
             rows = rows[0] if len(rows) else None
 
         return rows
+
+
+def _column(table, field, quote):
+    if field.expression:
+        return field.expression.format(Q=quote)
+    return '{Q}{table}{Q}.{Q}{column}{Q}'.format(
+        Q=quote, table=table.alias, column=field.column
+    )
 
 
 def _pair(table, tables, table2=None):

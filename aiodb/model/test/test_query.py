@@ -21,6 +21,19 @@ class C(Model):
     a_id = Field(foreign='test_query.A')
 
 
+class D(Model):
+    __TABLENAME__ = 'd'
+    a = Field()
+    b = Field(expression='NOW()')
+    c = Field(expression='FN({Q}z{Q})')
+
+
+def test_expression():
+    stmt = D.query._build(False, None, None, None, "'")
+    result = "SELECT 'd'.'a' AS 'a', NOW() AS 'b', FN('z') AS 'c' FROM 'd' AS 'd'"
+    assert stmt == result
+
+
 @pytest.mark.parametrize(
     'table,tables,is_none,rtable,rfield', (
         (B, (A,), False, A, 'a_id'),

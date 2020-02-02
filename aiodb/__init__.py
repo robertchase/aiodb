@@ -1,6 +1,6 @@
 # flake8: noqa
 from aiodb.model.cursor import Cursor
-from aiodb.model.model import Model
+from aiodb.model.model import Model, quote
 from aiodb.model.model import RequiredAttributeError, ReservedAttributeError
 from aiodb.model.model import NoneValueError, MultiplePrimaryKeysError
 from aiodb.model.field import Field

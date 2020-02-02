@@ -194,6 +194,8 @@ def act_tuple(context):
     p = packet.Packet(context.data)
     row = []
     for defn in context.column_definitions:
-        value = defn.convert(p.read_length_coded_string())
+        value = p.read_length_coded_string()
+        if value is not None:
+            value = defn.convert(value)
         row.append(value)
     context.tuples.append(row)

@@ -4,7 +4,7 @@ ifeq ($(GIT),)
   GIT := $(HOME)/git
 endif
 
-IMAGE := alpine-python
+IMAGE := base-python
 
 NET := --net test
 MOUNT := /opt/git
@@ -15,7 +15,7 @@ PYTHONPATH := -e PYTHONPATH=$(MOUNT)/ergaleia:$(MOUNT)/fsm:.
 DOCKER := docker run --rm -it $(VOLUMES) $(PYTHONPATH) $(WORKING) $(NET) $(IMAGE)
 
 shell:
-	$(DOCKER) sh
+	$(DOCKER) bash
 
 flake:
 	$(DOCKER) flake8
