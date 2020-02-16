@@ -163,9 +163,9 @@ class Query:
 
         stmt = 'SELECT '
         stmt += ', '.join(
-            '{column} AS {Q}{alias}{Q}'.format(
-                Q=quote, column=_column(table, fld, quote), alias=fld.name)
-            for table in self._tables
+            '{column} AS {cnt}_{alias}'.format(
+                cnt=cnt, column=_column(table, fld, quote), alias=fld.name)
+            for cnt, table in enumerate(self._tables)
             for fld in table._fields
         )
         stmt += ' FROM '
@@ -187,6 +187,7 @@ class Query:
 
         stmt = self._build(one, limit, offset, for_update, cursor.quote)
         columns, values = await cursor.execute(stmt, args)
+        columns = [col.split('_', 1)[1] for col in columns]
 
         rows = []
         for rs in values:
@@ -194,7 +195,7 @@ class Query:
             row = [t for t in zip(columns, rs)]
             for table in self._tables:
                 val = dict(row[:table.column_count])
-                if all(v is None for v in val.values()):
+                if val[table._primary.name] is None:
                     o = None
                 else:
                     o = table.cls(**val)
@@ -214,7 +215,8 @@ class Query:
 
 def _column(table, field, quote):
     if field.expression:
-        return field.expression.format(Q=quote)
+        return field.expression.format(
+            Q=quote, TABLE=quote + table.alias + quote)
     return '{Q}{table}{Q}.{Q}{column}{Q}'.format(
         Q=quote, table=table.alias, column=field.column
     )

@@ -30,7 +30,7 @@ class D(Model):
 
 def test_expression():
     stmt = D.query._build(False, None, None, None, "'")
-    result = "SELECT 'd'.'a' AS 'a', NOW() AS 'b', FN('z') AS 'c' FROM 'd' AS 'd'"
+    result = "SELECT 'd'.'a' AS 0_a, NOW() AS 0_b, FN('z') AS 0_c FROM 'd' AS 'd'"
     assert stmt == result
 
 
