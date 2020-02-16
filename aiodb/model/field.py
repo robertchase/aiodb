@@ -12,12 +12,12 @@ class Field():
         self.default = default
         self.column = column
         self.name = None
-        self.is_nullable = is_nullable or is_primary
+        self.is_readonly = is_readonly or expression is not None
+        self.is_nullable = is_nullable or is_primary or self.is_readonly
         self.is_primary = is_primary
         self._foreign = foreign
         self.is_foreign = foreign is not None
         self.expression = expression
-        self.is_readonly = is_readonly or expression is not None
         self.is_database = is_database
 
     @property

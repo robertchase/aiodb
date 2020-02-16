@@ -27,9 +27,12 @@ def test_required():
 
     class test(Model):
         test = Field()
+        test_read = Field(is_readonly=True)
 
     with pytest.raises(RequiredAttributeError):
         test()
+
+    test(test='foo')
 
 
 def test_default():
