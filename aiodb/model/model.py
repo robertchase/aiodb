@@ -135,6 +135,9 @@ class Model:
             ]
         )
 
+    def __getitem__(self, name):
+        return self._tables[name]
+
     def __getattribute__(self, name):
         value = object.__getattribute__(self, name)
         if name in ('_primary',):
