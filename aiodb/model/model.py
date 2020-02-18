@@ -2,7 +2,7 @@ from aiodb.model.field import Field
 from aiodb.model.query import Query
 
 
-__reserved__ = ('delete', 'load', 'save')
+__reserved__ = ('as_dict', 'delete', 'load', 'save')
 
 
 class RequiredAttributeError(AttributeError):
