@@ -59,6 +59,7 @@ class MysqlHandler:
 
         self.cursor = Cursor(
             self.execute,
+            to_mysql,
             self.close,
             quote='`',
             transactions=db.commit,
@@ -91,19 +92,6 @@ class MysqlHandler:
     async def execute(self, query, args=None, **kwargs):
         cur = self.cursor
         ctx = self.fsm.context
-
-        cur.query = query
-        cur.query_after = None
-        if args is not None:
-            if isinstance(args, (list, tuple)):
-                if len(args) == 1:
-                    args = to_mysql(args[0])
-                else:
-                    args = tuple([to_mysql(arg) for arg in args])
-            else:
-                args = to_mysql(args)
-            query = query % args
-        cur.query_after = query
 
         self.fsm.handle('query', query)  # start query running
 

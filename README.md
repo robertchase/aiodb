@@ -27,7 +27,7 @@ async def main():
     cursor = await db.cursor()
     t = Test(name='barney')
     await t.save(cursor)
-    print(t.as_dict)
+    print(t.as_dict())
 
 
 if __name__ == '__main__':

@@ -1,6 +1,13 @@
+class Raw:
+
+    def __init__(self, data):
+        self.data = data
+
+
 class Cursor:
 
-    def __init__(self, execute, close, quote='`', transactions=True):
+    def __init__(self, execute, serialize, close, quote='`',
+                 transactions=True):
         """Database cursor
 
            Abstract interface to a database. A cursor represents one
@@ -9,11 +16,11 @@ class Cursor:
 
            execute - callable that executes commands against the database
 
-             async def execute(query, args, **kwargs)
+               Definition:
+                 async def execute(query, **kwargs)
 
                Parameters:
                  query  - sql command string
-                 args   - substitution parameters (Note 1)
                  kwargs - additional input (varies by database)
 
                Result:
@@ -33,6 +40,11 @@ class Cursor:
                  4. Any message associated with the most recent call to
                     execute is held in the cursor.message attribute.
 
+           serialize - callable that escapes inputs
+
+               Definition:
+                 serialize(value) => escaped_value
+
            close - callable that closes the database connection
 
              async def close()
@@ -42,16 +54,9 @@ class Cursor:
            quote - quote character surrounding table/field names
 
            transactions - if False, don't perform transactions
-
-           Notes:
-
-               1. 'execute' takes a statement with %s substitutions, and
-                  an argument, or iterable of arguments, which are
-                  transformed/escaped before being substituted in the
-                  statement. if no argument is supplied, no substituion
-                  occurs.
         """
-        self.execute = execute
+        self._execute = execute
+        self.serialize = serialize
         self.close = close
         self.quote = quote
 
@@ -90,6 +95,25 @@ class Cursor:
             return
         self._transaction_depth = 0
         await self._transaction('ROLLBACK')
+
+    async def execute(self, query, args=None, **kwargs):
+        self.query = query
+        self.query_after = None
+
+        def _serialize(item):
+            if isinstance(item, Raw):
+                return item.data
+            return self.serialize(item)
+
+        if args is not None:
+            if isinstance(args, (list, tuple)):
+                args = [_serialize(arg) for arg in args]
+            else:
+                args = _serialize(args)
+            query = query % args
+
+        self.query_after = query
+        return await self._execute(query, **kwargs)
 
     async def select(self, query, args=None, one=False):
         """Run an arbitrary select statement
