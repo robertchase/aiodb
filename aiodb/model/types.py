@@ -15,6 +15,13 @@ def CHAR(length, is_strict=False):
     return _char
 
 
+class Binary:
+
+    @classmethod
+    def parse(cls, value):
+        return value
+
+
 class String:
 
     @classmethod

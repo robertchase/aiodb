@@ -1,3 +1,4 @@
+from aiodb.model.cursor import Raw
 from aiodb.model.field import Field
 from aiodb.model.query import Query
 
@@ -160,6 +161,8 @@ class Model:
             if value is None:
                 if not attr.is_nullable:
                     raise NoneValueError(name)
+                values[name] = value
+            elif isinstance(value, Raw):
                 values[name] = value
             else:
                 values[name] = attr.parse(value)

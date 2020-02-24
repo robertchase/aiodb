@@ -3,6 +3,9 @@ class Raw:
     def __init__(self, data):
         self.data = data
 
+    def __repr__(self):
+        return f"Raw('{self.data}')"
+
 
 class Cursor:
 
@@ -97,6 +100,21 @@ class Cursor:
         await self._transaction('ROLLBACK')
 
     async def execute(self, query, args=None, **kwargs):
+        """Execute an arbitrary SQL command
+
+           The query is a string with %s subsitiutions which are replaced
+           with args after they have been converted and escaped. After
+           substitution, the query is passed to the database-specific
+           execute function specified in __init__.
+
+           Parameters:
+               query  - query string (with %s substitutions)
+               args   - substitution parameters
+               kwargs - additional input (varies by database)
+
+          Result:
+              Same as result of execute function specified in __init__.
+        """
         self.query = query
         self.query_after = None
 
@@ -107,7 +125,7 @@ class Cursor:
 
         if args is not None:
             if isinstance(args, (list, tuple)):
-                args = [_serialize(arg) for arg in args]
+                args = tuple([_serialize(arg) for arg in args])
             else:
                 args = _serialize(args)
             query = query % args

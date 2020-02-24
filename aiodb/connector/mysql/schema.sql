@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS `test` (
     `f_tim` TIME NULL,
     `f_yea` YEAR NULL,
     `g_cha` CHAR(10) NULL,
-    `g_vch` VARCHAR(10) NULL,
+    `g_vch` VARCHAR(100) NULL,
     `g_bin` BINARY(10) NULL,
     `g_vbi` VARBINARY(10) NULL,
     `g_tbl` TINYBLOB NULL,
