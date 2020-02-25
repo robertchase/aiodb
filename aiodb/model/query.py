@@ -101,13 +101,12 @@ class Query:
                   the ambiguity can be removed by specifying which existing
                   table to match. Foreign keys from 'table' will be checked
                   first, followed by the primary key.
-               3. The 'alias' parameter can be used to prevent collision with
-                  an existing Model attribute, or to allow the same Model to be
+               3. The 'alias' parameter is used to allow the same Model to be
                   joined more than once.
-               4. Any joined Model is accesible as an attribute of the Model
-                  used to create the Query object. The default attribute name
-                  is the lower case classname of the Model. Specifying 'alias'
-                  will override this default.
+               4. Any joined Model is accesible using square bracket notation
+                  on the main Query object. The default attribute name is the
+                  lower case classname of the Model. Specifying 'alias' will
+                  override this default.
 
                   Example of join result structure:
 
@@ -120,10 +119,10 @@ class Query:
                       an attribute of a Root instance. Therefore:
 
                         root = result[0]
-                        node = root.node
+                        node = root['node']
 
                   In the case of multiple join clauses, each joined instance
-                  will be added to the Model  used to create the Query object.
+                  will be added to the main Query object.
         """
         try:
             table = import_by_path(table)
