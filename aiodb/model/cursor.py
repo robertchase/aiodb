@@ -23,25 +23,20 @@ class Cursor:
                  async def execute(query, **kwargs)
 
                Parameters:
-                 query  - sql command string
-                 kwargs - additional input (varies by database)
+                 query  - escaped sql command string
+                 kwargs - database specific
 
                Result:
                  columns - list of column names (may be empty)
                  rows    - list of row tuples (may be empty)
 
                Notes:
-                 1. The cursor.query attribute holds the last query passed
-                    to the execute callable.
-                 2. The cursor.query_after attributes holds the last query
-                    passed to the execute callable with all args substituted
-                    into the string.
-                 3. If the most recent call to execute was an INSERT into
-                    a table that supports an auto-increment type field,
-                    the cursor.last_id attribute will contain the value
-                    inserted in this field.
-                 4. Any message associated with the most recent call to
-                    execute is held in the cursor.message attribute.
+                   1. The execute callable manages the last_id attribute
+                      of the cursor object, which contains the auto-
+                      generated id of the most recent query.
+                   2. The execute callable manages the message attribute
+                      of the cursor object which contains any message
+                      returned from the most recent query.
 
            serialize - callable that escapes inputs
 
@@ -110,7 +105,7 @@ class Cursor:
            Parameters:
                query  - query string (with %s substitutions)
                args   - substitution parameters
-               kwargs - additional input (varies by database)
+               kwargs - database specific
 
           Result:
               Same as result of execute function specified in __init__.

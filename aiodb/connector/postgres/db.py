@@ -96,19 +96,6 @@ class PostgresHandler:
         if is_insert:
             query += f' RETURNING "{pk}" AS "last_id"'
 
-        cur.query = query
-        if args is not None:
-            if isinstance(args, (list, tuple)):
-                if len(args) == 1:
-                    args = to_postgres(args)
-                else:
-                    args = tuple(to_postgres(arg) for arg in args)
-            else:
-                print('here')
-                args = to_postgres(args)
-            query = query % args
-        cur.query_after = query
-
         self.fsm.handle('query', query)  # start query running
 
         while ctx.is_running:  # while query is running
@@ -119,6 +106,7 @@ class PostgresHandler:
             cur.last_id = values[0][0]
             return None
 
+        # TODO
         # cur.message = ctx.message
 
         return ctx.result_set
