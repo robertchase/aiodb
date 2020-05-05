@@ -5,7 +5,6 @@ import logging
 from fsm.parser import Parser as parser
 
 from aiodb import Cursor
-from aiodb.connector.postgres.serializer import to_postgres
 
 
 log = logging.getLogger(__name__)
