@@ -13,6 +13,7 @@ class QueryTable:
 
         self.cls = cls
         self.alias = alias or cls._camel
+        self.TABLE_name = alias or cls.__name__
         self.column_count = len(cls._fields)
 
         self.join_type = join_type
@@ -170,7 +171,11 @@ class Query:
         stmt += ' FROM '
         stmt += ' '.join(table.join(quote) for table in self._tables)
         if self._where:
-            stmt += ' WHERE ' + self._where.format(Q=quote)
+            self._where = self._where.replace('{TABLE.', '{TABLE_')
+            subs = dict(Q=quote)
+            for qt in self._tables:
+                subs['TABLE_' + qt.TABLE_name] = quote + qt.alias + quote
+            stmt += ' WHERE ' + self._where.format(**subs)
         if self._order:
             stmt += ' ORDER BY ' + self._order
         if limit:

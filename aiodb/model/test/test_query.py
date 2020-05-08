@@ -7,10 +7,12 @@ from aiodb.model.query import _pair
 
 
 class A(Model):
+    __TABLENAME__ = 'yikes'
     id = Field(is_primary=True)
 
 
 class B(Model):
+    __TABLENAME__ = 'yeah'
     id = Field(is_primary=True)
     a_id = Field(foreign='test_query.A')
     c_id = Field(foreign='test_query.C')
@@ -33,6 +35,28 @@ def test_expression():
     result = \
         "SELECT 'd'.'a' AS 0_a, NOW() AS 0_b, FN('z') AS 0_c FROM 'd' AS 'd'"
     assert stmt == result
+
+
+def test_table_name():
+    query = A.query.where('{TABLE.A}.id=10')
+    stmt = query._build(False, None, None, None, "'")
+    expect = (
+        "SELECT 'a'.'id' AS 0_id FROM 'yikes' AS 'a'"
+        " WHERE 'a'.id=10"
+    )
+    assert stmt == expect
+
+
+def test_table_names():
+    query = A.query.join(B, alias='FOO').where('{TABLE.A}.id={TABLE.FOO}.a')
+    stmt = query._build(False, None, None, None, "'")
+    expect = (
+        "SELECT 'a'.'id' AS 0_id, 'FOO'.'a_id' AS 1_a_id,"
+        " 'FOO'.'c_id' AS 1_c_id, 'FOO'.'id' AS 1_id"
+        " FROM 'yikes' AS 'a' JOIN 'yeah' AS 'FOO'"
+        " ON 'FOO'.'a_id' = 'a'.'id' WHERE 'a'.id='FOO'.a"
+    )
+    assert stmt == expect
 
 
 @pytest.mark.parametrize(
