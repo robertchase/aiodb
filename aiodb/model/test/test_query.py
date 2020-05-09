@@ -59,6 +59,12 @@ def test_table_names():
     assert stmt == expect
 
 
+def test_duplicate():
+    with pytest.raises(ValueError):
+        query = A.query.join(C).join(C)
+    query = A.query.join(C).join(C, alias='CC')
+
+
 @pytest.mark.parametrize(
     'table,tables,is_none,rtable,rfield', (
         (B, (A,), False, A, 'a_id'),

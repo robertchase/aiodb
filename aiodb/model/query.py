@@ -6,62 +6,6 @@ https://github.com/robertchase/spindrift/blob/master/LICENSE.txt
 from ergaleia.import_by_path import import_by_path
 
 
-class QueryTable:
-
-    def __init__(self, cls, alias=None, column=None, join_type=None,
-                 join_table_name=None, join_column_name=None):
-
-        self.cls = cls
-        self.alias = alias or cls._camel
-        self.TABLE_name = alias or cls.__name__
-        self.column_count = len(cls._fields)
-
-        self.join_type = join_type
-        self.join_column = column
-        self.join_table_name = join_table_name
-        self.join_table_column = join_column_name
-
-    def join(self, quote):
-        if self.join_type is None:
-            return '{Q}{table}{Q} AS {Q}{alias}{Q}'.format(
-                Q=quote, table=self.name, alias=self.alias
-            )
-
-        join = self.join_type
-
-        join += ' {Q}{table}{Q} AS {Q}{alias}{Q}'.format(
-            Q=quote, table=self.name, alias=self.alias
-        )
-
-        join += ' ON {Q}{table}{Q}.{Q}{column}{Q}'.format(
-            Q=quote, table=self.alias, column=self.join_column
-        )
-
-        return join + ' = {Q}{table}{Q}.{Q}{column}{Q}'.format(
-            Q=quote, table=self.join_table_name, column=self.join_table_column
-        )
-
-    @property
-    def name(self):
-        return self.cls.__TABLENAME__
-
-    @property
-    def _fields(self):
-        return self.cls._db_read
-
-    @property
-    def _primary(self):
-        return self.cls._primary
-
-    @property
-    def _foreign(self):
-        return self.cls._foreign
-
-    @property
-    def _class(self):
-        return self.cls
-
-
 class Query:
 
     def __init__(self, table):
@@ -131,10 +75,6 @@ class Query:
             raise TypeError("invalid path to table: '{}'".format(table))
         except ModuleNotFoundError:
             raise TypeError("unable to load '{}'".format(table))
-        if alias is None:
-            alias = table._camel
-        if alias in [t.alias for t in self._tables]:
-            raise ValueError(f"duplicate table '{alias}'")
 
         field, table2, field2 = _pair(table, self._tables, table2)
 
@@ -147,11 +87,10 @@ class Query:
         else:
             raise ValueError("invalid outer join value: '{}'".format(outer))
 
-        self._tables.append(
-            QueryTable(
-                table, alias, field, join, table2, field2
-            )
-        )
+        qt = QueryTable(table, alias, field, join, table2, field2)
+        if qt.alias in [t.alias for t in self._tables]:
+            raise ValueError(f"duplicate table '{qt.alias}'")
+        self._tables.append(qt)
 
         return self
 
@@ -215,6 +154,72 @@ class Query:
             rows = rows[0] if len(rows) else None
 
         return rows
+
+
+class QueryTable:
+
+    def __init__(self, cls, alias=None, column=None, join_type=None,
+                 join_table_name=None, join_column_name=None):
+
+        self.cls = cls
+        self.alias = alias or _camel(cls)
+        self.TABLE_name = alias or cls.__name__
+        self.column_count = len(cls._fields)
+
+        self.join_type = join_type
+        self.join_column = column
+        self.join_table_name = join_table_name
+        self.join_table_column = join_column_name
+
+    def join(self, quote):
+        if self.join_type is None:
+            return '{Q}{table}{Q} AS {Q}{alias}{Q}'.format(
+                Q=quote, table=self.name, alias=self.alias
+            )
+
+        join = self.join_type
+
+        join += ' {Q}{table}{Q} AS {Q}{alias}{Q}'.format(
+            Q=quote, table=self.name, alias=self.alias
+        )
+
+        join += ' ON {Q}{table}{Q}.{Q}{column}{Q}'.format(
+            Q=quote, table=self.alias, column=self.join_column
+        )
+
+        return join + ' = {Q}{table}{Q}.{Q}{column}{Q}'.format(
+            Q=quote, table=self.join_table_name, column=self.join_table_column
+        )
+
+    @property
+    def name(self):
+        return self.cls.__TABLENAME__
+
+    @property
+    def _fields(self):
+        return self.cls._db_read
+
+    @property
+    def _primary(self):
+        return self.cls._primary
+
+    @property
+    def _foreign(self):
+        return self.cls._foreign
+
+    @property
+    def _class(self):
+        return self.cls
+
+
+def _camel(cls):
+    camel = cls.__name__
+    return ''.join(
+        [
+            c if c.islower() else '_' + c.lower()
+            for c in camel[0].lower() + camel[1:]
+        ]
+    )
 
 
 def _column(table, field, quote):

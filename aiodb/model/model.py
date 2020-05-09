@@ -127,15 +127,6 @@ class Model:
         return cls
 
     @_classproperty
-    def _camel(cls):
-        camel = cls.__name__
-        return ''.join(
-            [
-                c if c.islower() else '_' + c.lower()
-                for c in camel[0].lower() + camel[1:]
-            ]
-        )
-
     def __getitem__(self, name):
         return self._tables[name]
 
