@@ -162,7 +162,7 @@ class QueryTable:
                  join_table_name=None, join_column_name=None):
 
         self.cls = cls
-        self.alias = alias or _camel(cls)
+        self.alias = alias or _camel(cls.__name__)
         self.TABLE_name = alias or cls.__name__
         self.column_count = len(cls._fields)
 
@@ -212,12 +212,11 @@ class QueryTable:
         return self.cls
 
 
-def _camel(cls):
-    camel = cls.__name__
+def _camel(name):
     return ''.join(
         [
             c if c.islower() else '_' + c.lower()
-            for c in camel[0].lower() + camel[1:]
+            for c in name[0].lower() + name[1:]
         ]
     )
 

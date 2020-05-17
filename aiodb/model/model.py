@@ -126,7 +126,6 @@ class Model:
     def _class(cls):
         return cls
 
-    @_classproperty
     def __getitem__(self, name):
         return self._tables[name]
 

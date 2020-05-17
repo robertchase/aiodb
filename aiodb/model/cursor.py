@@ -17,41 +17,43 @@ class Cursor:
            connection to a database. After close is called, the connection is
            no longer active.
 
-           execute - callable that executes commands against the database
+           Arguments:
 
-               Definition:
-                 async def execute(query, **kwargs)
+                execute - callable that executes commands against the database
 
-               Parameters:
-                 query  - escaped sql command string
-                 kwargs - database specific
+                    Definition:
+                        async def execute(query, **kwargs)
 
-               Result:
-                 columns - list of column names (may be empty)
-                 rows    - list of row tuples (may be empty)
+                    Arguments:
+                        query  - escaped sql command string
+                        kwargs - database specific
 
-               Notes:
-                   1. The execute callable manages the last_id attribute
-                      of the cursor object, which contains the auto-
-                      generated id of the most recent query.
-                   2. The execute callable manages the message attribute
-                      of the cursor object which contains any message
-                      returned from the most recent query.
+                    Result:
+                        columns - list of column names (may be empty)
+                        rows    - list of row tuples (may be empty)
 
-           serialize - callable that escapes inputs
+                    Notes:
+                        1. The execute callable manages the last_id attribute
+                            of the cursor object, which contains the auto-
+                            generated id of the most recent query.
+                        2. The execute callable manages the message attribute
+                            of the cursor object which contains any message
+                            returned from the most recent query.
 
-               Definition:
-                 serialize(value) => escaped_value
+                serialize - callable that escapes inputs
 
-           close - callable that closes the database connection
+                    Definition:
+                        serialize(value) => escaped_value
 
-             async def close()
-               Return:
-                   None
+                close - callable that closes the database connection
 
-           quote - quote character surrounding table/field names
+                    async def close()
+                    Return:
+                        None
 
-           transactions - if False, don't perform transactions
+                quote - quote character surrounding table/field names
+
+                transactions - if False, don't perform transactions
         """
         self._execute = execute
         self.serialize = serialize
