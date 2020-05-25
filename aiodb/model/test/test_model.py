@@ -68,7 +68,7 @@ def test_multiple_primary():
 
     t = test()
     with pytest.raises(MultiplePrimaryKeysError):
-        assert t._primary.name == 'id'
+        assert t._primary().name == 'id'
 
 
 class field_test(Model):
@@ -85,25 +85,24 @@ def test_field():
 
 def test_fields():
     t = field_test(a=0, b=0, c=0, d=0)
-    assert sorted(f.name for f in t._fields) == ['a', 'b', 'c', 'd']
+    assert sorted(f.name for f in t._fields()) == ['a', 'b', 'c', 'd']
 
 
 def test_primary():
     t = field_test(a=0, b=0, c=0, d=0)
-    assert t._primary.name == 'a'
+    assert t._primary().name == 'a'
 
 
 def test_db_read():
     t = field_test(a=0, b=0, c=0, d=0)
-    assert sorted(f.name for f in t._db_read) == ['a', 'b', 'c']
+    assert sorted(f.name for f in t._db_read()) == ['a', 'b', 'c']
 
 
 def test_db_insert():
     t = field_test(a=0, b=0, c=0, d=0)
-    assert sorted(f.name for f in t._db_insert) == ['a', 'b']
+    assert sorted(f.name for f in t._db_insert()) == ['a', 'b']
 
 
 def test_db_update():
     t = field_test(a=0, b=0, c=0, d=0)
-    assert sorted(f.name for f in t._db_update) == ['b']
-    assert sorted(f.name for f in t._db_update) == ['b']
+    assert sorted(f.name for f in t._db_update()) == ['b']

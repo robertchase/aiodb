@@ -105,7 +105,7 @@ class Query:
             '{column} AS {cnt}_{alias}'.format(
                 cnt=cnt, column=_column(table, fld, quote), alias=fld.name)
             for cnt, table in enumerate(self._tables)
-            for fld in table._fields
+            for fld in table._fields()
         )
         stmt += ' FROM '
         stmt += ' '.join(table.join(quote) for table in self._tables)
@@ -138,7 +138,7 @@ class Query:
             row = [t for t in zip(columns, rs)]
             for table in self._tables:
                 val = dict(row[:table.column_count])
-                if val[table._primary.name] is None:
+                if val[table._primary().name] is None:
                     o = None
                 else:
                     o = table.cls(**val)
@@ -164,7 +164,7 @@ class QueryTable:
         self.cls = cls
         self.alias = alias or _camel(cls.__name__)
         self.TABLE_name = alias or cls.__name__
-        self.column_count = len(cls._fields)
+        self.column_count = len(cls._fields())
 
         self.join_type = join_type
         self.join_column = column
@@ -195,19 +195,15 @@ class QueryTable:
     def name(self):
         return self.cls.__TABLENAME__
 
-    @property
     def _fields(self):
-        return self.cls._db_read
+        return self.cls._db_read()
 
-    @property
     def _primary(self):
-        return self.cls._primary
+        return self.cls._primary()
 
-    @property
     def _foreign(self):
-        return self.cls._foreign
+        return self.cls._foreign()
 
-    @property
     def _class(self):
         return self.cls
 
@@ -270,12 +266,12 @@ def _pair(table, tables, table2=None):
     ref = _find_foreign_key_reference(table, tables)
     if ref:
         t, field = ref
-        return field, t.alias, t._primary.name
+        return field, t.alias, t._primary().name
 
     ref = _find_primary_key_reference(table, tables)
     if ref:
         t, field = ref
-        return table._primary.name, t.alias, field
+        return table._primary().name, t.alias, field
 
     raise TypeError(
         "no primary or foreign key matches found for '{}'".format(
@@ -291,7 +287,7 @@ def _find_foreign_key_reference(table, tables):
        tables - a list or tuple of Models or QueryTables
     """
     try:
-        foreign = table._foreign
+        foreign = table._foreign()
     except AttributeError:
         raise TypeError('table must be a Model or QueryTable')
     if len(foreign) == 0:
@@ -299,7 +295,7 @@ def _find_foreign_key_reference(table, tables):
     refs = [
         (t, f.name) for f in foreign
         for t in tables
-        if f.foreign == t._class
+        if f.foreign == t._class()
     ]
     if len(refs) == 0:
         return None
@@ -320,8 +316,8 @@ def _find_primary_key_reference(table, tables):
     """
     refs = [
         (t, f.name) for t in tables
-        for f in t._foreign
-        if f.foreign == table._class
+        for f in t._foreign()
+        if f.foreign == table._class()
     ]
     if len(refs) == 0:
         return None

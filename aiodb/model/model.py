@@ -1,3 +1,4 @@
+"""Object Relational Model"""
 from aiodb.model.cursor import Raw
 from aiodb.model.field import Field
 from aiodb.model.query import Query
@@ -27,12 +28,13 @@ def quote(name):
 
 
 class Model:
+    """Base Model"""
 
     __TABLENAME__ = None
 
     def __init__(self, **kwargs):
         self._values = {}
-        for field in self._fields:
+        for field in self._fields():
             if not field.is_nullable and field.default is None:
                 if field.name not in kwargs:
                     raise RequiredAttributeError(field.name)
@@ -44,32 +46,22 @@ class Model:
 
     def __repr__(self):
         result = f'{self._class.__name__}('
-        if self._primary and getattr(self, self._primary.name):
-            val = getattr(self, self._primary.name)
+        if self._primary and getattr(self, self._primary().name):
+            val = getattr(self, self._primary().name)
             result += f'primary_key={val}'
         else:
             result += f'object_id={id(self)}'
+
         result += ')'
         return result
 
     def as_dict(self):
         return {
             fld.name: getattr(self, fld.name)
-            for fld in self._fields
+            for fld in self._fields()
         }
 
-    class _classproperty(object):
-        """Hack for property-like access to class method
-
-           https://stackoverflow.com/questions/5189699/how-to-make-a-class-property
-        """
-        def __init__(self, fn):
-            self.fn = fn
-
-        def __get__(self, theinstance, theclass):
-            return self.fn(theclass)
-
-    @_classproperty
+    @classmethod
     def _fields(cls):
         if hasattr(cls, '_field_cache'):
             return cls._field_cache
@@ -93,36 +85,36 @@ class Model:
     @classmethod
     def _field(cls, name):
         try:
-            return [field for field in cls._fields if field.name == name][0]
+            return [field for field in cls._fields() if field.name == name][0]
         except IndexError:
             raise AttributeError(name)
 
-    @_classproperty
+    @classmethod
     def _db_read(cls):
-        return [fld for fld in cls._fields if fld.is_database]
+        return [fld for fld in cls._fields() if fld.is_database]
 
-    @_classproperty
+    @classmethod
     def _db_insert(cls):
-        return [fld for fld in cls._db_read if not fld.is_readonly]
+        return [fld for fld in cls._db_read() if not fld.is_readonly]
 
-    @_classproperty
+    @classmethod
     def _db_update(cls):
-        return [fld for fld in cls._db_insert if not fld.is_primary]
+        return [fld for fld in cls._db_insert() if not fld.is_primary]
 
-    @_classproperty
+    @classmethod
     def _primary(cls):
-        primary = [fld for fld in cls._fields if fld.is_primary]
+        primary = [fld for fld in cls._fields() if fld.is_primary]
         if len(primary) > 1:
             raise MultiplePrimaryKeysError()
         if len(primary) == 1:
             return primary[0]
         return None
 
-    @_classproperty
+    @classmethod
     def _foreign(cls):
-        return [fld for fld in cls._db_read if fld.is_foreign]
+        return [fld for fld in cls._db_read() if fld.is_foreign]
 
-    @_classproperty
+    @classmethod
     def _class(cls):
         return cls
 
@@ -157,7 +149,7 @@ class Model:
             else:
                 values[name] = attr.parse(value)
 
-    @_classproperty
+    @classmethod
     def query(cls):
         return Query(cls)
 
@@ -165,7 +157,7 @@ class Model:
     async def load(cls, cursor, key):
         """Load a database row by primary key.
         """
-        q = Query(cls).where(f'{quote(cls._primary.name)}=%s')
+        q = Query(cls).where(f'{quote(cls._primary().name)}=%s')
         return await q.execute(cursor, key, one=True)
 
     async def save(self, cursor, insert=False):
@@ -187,14 +179,14 @@ class Model:
 
                2. This call will not change expression Fields.
         """
-        pk = self._primary
+        pk = self._primary()
         self._updated = []
         cursor.last_id = None
         cursor.query = None
         cursor.query_after = None
         if insert or pk is None or getattr(self, pk.name) is None:
             new = True
-            fields = self._db_insert if insert else self._db_update
+            fields = self._db_insert() if insert else self._db_update()
             fields = [
                 f.column
                 for f in fields
@@ -252,28 +244,28 @@ class Model:
            Returns self.
         """
         if key is not None:
-            setattr(self, self._primary.name, key)
+            setattr(self, self._primary().name, key)
         return await self.save(cursor, insert=True)
 
     async def delete(self, cursor):
         """Delete matching row from database by primary key.
         """
         stmt = f'DELETE FROM {quote(self.__TABLENAME__)}' + \
-            f' WHERE {quote(self._primary.name)}=%s'
+            f' WHERE {quote(self._primary().name)}=%s'
         stmt = stmt.format(Q=cursor.quote)
-        await cursor.execute(stmt, getattr(self, self._primary.name))
+        await cursor.execute(stmt, getattr(self, self._primary().name))
 
     def _cache_field_values(self):
         self._orig = {
             fld.name: getattr(self, fld.name) for
-            fld in self._db_update
+            fld in self._db_update()
         }
 
     @property
     def _fields_to_update(self):
         f = [
             fld
-            for fld in self._db_update
+            for fld in self._db_update()
             if getattr(self, fld.name) != self._orig[fld.name]
         ]
         if len(f) == 0:

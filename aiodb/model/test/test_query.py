@@ -31,14 +31,14 @@ class D(Model):
 
 
 def test_expression():
-    stmt = D.query._build(False, None, None, None, "'")
+    stmt = D.query()._build(False, None, None, None, "'")
     result = \
         "SELECT 'd'.'a' AS 0_a, NOW() AS 0_b, FN('z') AS 0_c FROM 'd' AS 'd'"
     assert stmt == result
 
 
 def test_table_name():
-    query = A.query.where('{TABLE.A}.id=10')
+    query = A.query().where('{TABLE.A}.id=10')
     stmt = query._build(False, None, None, None, "'")
     expect = (
         "SELECT 'a'.'id' AS 0_id FROM 'yikes' AS 'a'"
@@ -48,7 +48,7 @@ def test_table_name():
 
 
 def test_table_names():
-    query = A.query.join(B, alias='FOO').where('{TABLE.A}.id={TABLE.FOO}.a')
+    query = A.query().join(B, alias='FOO').where('{TABLE.A}.id={TABLE.FOO}.a')
     stmt = query._build(False, None, None, None, "'")
     expect = (
         "SELECT 'a'.'id' AS 0_id, 'FOO'.'a_id' AS 1_a_id,"
@@ -61,8 +61,8 @@ def test_table_names():
 
 def test_duplicate():
     with pytest.raises(ValueError):
-        query = A.query.join(C).join(C)
-    query = A.query.join(C).join(C, alias='CC')
+        A.query().join(C).join(C)
+    A.query().join(C).join(C, alias='CC')
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,4 @@
-.PHONY: shell test
+.PHONY: shell lint test
 
 ifeq ($(GIT),)
   GIT := $(HOME)/git
@@ -17,8 +17,8 @@ DOCKER := docker run --rm -it $(VOLUMES) $(PYTHONPATH) $(WORKING) $(NET) $(IMAGE
 shell:
 	$(DOCKER) bash
 
-flake:
-	$(DOCKER) flake8
+lint:
+	$(DOCKER) pylint aiodb
 
 test:
 	$(DOCKER) pytest aiodb/model

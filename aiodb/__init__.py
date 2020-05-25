@@ -1,3 +1,4 @@
+"""convenient module level attributes"""
 # flake8: noqa
 from aiodb.model.cursor import Cursor, Raw
 from aiodb.model.model import Model, quote
