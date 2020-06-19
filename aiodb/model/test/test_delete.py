@@ -1,16 +1,11 @@
-import pytest
-
-from aiodb.model.test.test_save import MockCursor, MockTable
+from aiodb.model.test.test_save import MockTable
 
 
-@pytest.mark.asyncio
-async def test_delete():
+def test_delete(cursor, run):
 
-    assert True
-    cursor = MockCursor()
     o = MockTable(the_key=100, name='foo')
 
-    await o.delete(cursor)
+    run(o.delete, cursor)
     assert cursor.query == \
         "DELETE FROM 'tester' WHERE 'the_key'=%s"
     assert cursor.query_after == \
