@@ -1,3 +1,4 @@
+"""validate type operation"""
 import datetime
 import pytest
 
@@ -6,7 +7,7 @@ from aiodb.model.types import String, Integer, Boolean, Date, Datetime, Time
 
 
 @pytest.mark.parametrize(
-    'length,input,expected,strict', (
+    'length,value,expected,strict', (
         (5, 1, '1    ', False),
         (2, '1', '1 ', False),
         (2, '123', '12', False),
@@ -16,16 +17,17 @@ from aiodb.model.types import String, Integer, Boolean, Date, Datetime, Time
         (5, 123.4, '123.4', False),
     ),
 )
-def test_char_parse(length, input, expected, strict):
+def test_char_parse(length, value, expected, strict):
+    """validate char parsing"""
     if expected == ValueError:
         with pytest.raises(expected):
-            CHAR(length, strict).parse(input)
+            CHAR(length, strict).parse(value)
     else:
-        assert CHAR(length, strict).parse(input) == expected
+        assert CHAR(length, strict).parse(value) == expected
 
 
 @pytest.mark.parametrize(
-    'input,expected', (
+    'value,expected', (
         (1, '1'),
         ('1', '1'),
         (123.4, '123.4'),
@@ -33,16 +35,17 @@ def test_char_parse(length, input, expected, strict):
         (None, ValueError),
     ),
 )
-def test_string_parse(input, expected):
+def test_string_parse(value, expected):
+    """validate string parsing"""
     if expected == ValueError:
         with pytest.raises(expected):
-            String.parse(input)
+            String.parse(value)
     else:
-        assert String.parse(input) == expected
+        assert String.parse(value) == expected
 
 
 @pytest.mark.parametrize(
-    'input,expected', (
+    'value,expected', (
         (1, 1),
         ('1', 1),
         (1.0, 1),
@@ -55,16 +58,17 @@ def test_string_parse(input, expected):
         (None, ValueError),
     ),
 )
-def test_integer_parse(input, expected):
+def test_integer_parse(value, expected):
+    """validate integer parsing"""
     if expected == ValueError:
         with pytest.raises(expected):
-            Integer.parse(input)
+            Integer.parse(value)
     else:
-        assert Integer.parse(input) == expected
+        assert Integer.parse(value) == expected
 
 
 @pytest.mark.parametrize(
-    'input,expected', (
+    'value,expected', (
         (True, 1),
         (False, 0),
         (1, 1),
@@ -81,89 +85,93 @@ def test_integer_parse(input, expected):
         (None, ValueError),
     ),
 )
-def test_boolean_parse(input, expected):
+def test_boolean_parse(value, expected):
+    """validate boolean parsing"""
     if expected == ValueError:
         with pytest.raises(expected):
-            Boolean.parse(input)
+            Boolean.parse(value)
     else:
-        assert Boolean.parse(input) == expected
+        assert Boolean.parse(value) == expected
 
 
-date_string = '2020-01-02'
-date_date = datetime.datetime(2020, 1, 2).date()
-date_datetime = datetime.datetime(2020, 1, 2, 12)
+DATE_STRING = '2020-01-02'
+DATE_DATE = datetime.datetime(2020, 1, 2).date()
+DATE_DATETIME = datetime.datetime(2020, 1, 2, 12)
 
 
 @pytest.mark.parametrize(
-    'input,expected', (
+    'value,expected', (
         (None, ValueError),
-        (date_string, date_date),
+        (DATE_STRING, DATE_DATE),
         ('garbage', ValueError),
-        (date_date, date_date),
-        (date_datetime, date_date),
+        (DATE_DATE, DATE_DATE),
+        (DATE_DATETIME, DATE_DATE),
         (1, TypeError),
     ),
 )
-def test_date_parse(input, expected):
+def test_date_parse(value, expected):
+    """validate date parsing"""
     if expected in (ValueError, TypeError):
         with pytest.raises(expected):
-            Date.parse(input)
+            Date.parse(value)
     else:
-        assert Date.parse(input) == expected
+        assert Date.parse(value) == expected
 
 
-datetime_string = '2020-01-02 11:12:13'
-datetime_date = datetime.datetime(2020, 1, 2).date()
-datetime_datetime = datetime.datetime(2020, 1, 2, 11, 12, 13)
-datetime_us_string = '2020-01-02 11:12:13.123456'
-datetime_us_datetime = datetime.datetime(2020, 1, 2, 11, 12, 13, 123456)
+DATETIME_STRING = '2020-01-02 11:12:13'
+DATETIME_DATE = datetime.datetime(2020, 1, 2).date()
+DATETIME_DATETIME = datetime.datetime(2020, 1, 2, 11, 12, 13)
+DATETIME_US_STRING = '2020-01-02 11:12:13.123456'
+DATETIME_US_DATETIME = datetime.datetime(2020, 1, 2, 11, 12, 13, 123456)
 
 
 @pytest.mark.parametrize(
-    'input,expected', (
+    'value,expected', (
         (None, ValueError),
         ('garbage', ValueError),
         (1, TypeError),
-        (datetime_string, datetime_datetime),
-        (datetime_date, datetime.datetime(
-            datetime_date.year, datetime_date.month, datetime_date.day
+        (DATETIME_STRING, DATETIME_DATETIME),
+        (DATETIME_DATE, datetime.datetime(
+            DATETIME_DATE.year, DATETIME_DATE.month, DATETIME_DATE.day
         )),
-        (datetime_datetime, datetime_datetime),
-        (datetime_us_string, datetime_us_datetime),
+        (DATETIME_DATETIME, DATETIME_DATETIME),
+        (DATETIME_US_STRING, DATETIME_US_DATETIME),
     ),
 )
-def test_datetime_parse(input, expected):
+def test_datetime_parse(value, expected):
+    """valudate datetime parsing"""
     if expected in (ValueError, TypeError):
         with pytest.raises(expected):
-            Datetime.parse(input)
+            Datetime.parse(value)
     else:
-        assert Datetime.parse(input) == expected
+        assert Datetime.parse(value) == expected
 
 
-time_large_string = '111:12:13'
-time_large_time = datetime.timedelta(hours=111, minutes=12, seconds=13)
-time_string = '11:12:13'
-time_time = datetime.time(11, 12, 13)
-time_us_string = '11:12:13.123456'
-time_us_time = datetime.time(11, 12, 13, 123456)
-time_us_string_2 = '11:12:13.123'
-time_us_time_2 = datetime.time(11, 12, 13, 123000)
+TIME_LARGE_STRING = '111:12:13'
+TIME_LARGE_TIME = datetime.timedelta(hours=111, minutes=12, seconds=13)
+TIME_STRING = '11:12:13'
+TIME_TIME = datetime.time(11, 12, 13)
+TIME_US_STRING = '11:12:13.123456'
+TIME_US_TIME = datetime.time(11, 12, 13, 123456)
+TIME_US_STRING_2 = '11:12:13.123'
+TIME_US_TIME_2 = datetime.time(11, 12, 13, 123000)
 
 
 @pytest.mark.parametrize(
-    'input,expected', (
+    'value,expected', (
         (None, ValueError),
         ('garbage', ValueError),
         (1, ValueError),
-        (time_string, time_time),
-        (time_us_string, time_us_time),
-        (time_us_string_2, time_us_time_2),
-        (time_large_string, time_large_time),
+        (TIME_STRING, TIME_TIME),
+        (TIME_US_STRING, TIME_US_TIME),
+        (TIME_US_STRING_2, TIME_US_TIME_2),
+        (TIME_LARGE_STRING, TIME_LARGE_TIME),
     ),
 )
-def test_time_parse(input, expected):
+def test_time_parse(value, expected):
+    """validate time parsing"""
     if expected in (ValueError, TypeError):
         with pytest.raises(expected):
-            Time.parse(input)
+            Time.parse(value)
     else:
-        assert Time.parse(input) == expected
+        assert Time.parse(value) == expected

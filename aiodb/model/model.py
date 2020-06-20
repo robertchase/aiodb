@@ -8,22 +8,23 @@ __reserved__ = ('as_dict', 'delete', 'load', 'save')
 
 
 class RequiredAttributeError(AttributeError):
-    pass
+    """custom exception"""
 
 
 class ReservedAttributeError(AttributeError):
-    pass
+    """custom exception"""
 
 
 class NoneValueError(ValueError):
-    pass
+    """custom exception"""
 
 
 class MultiplePrimaryKeysError(AttributeError):
-    pass
+    """custom exception"""
 
 
 def quote(name):
+    """return value surrounded with substitutable quote marks"""
     return '{Q}' + name + '{Q}'
 
 
@@ -56,6 +57,7 @@ class Model:
         return result
 
     def as_dict(self):
+        """return instance as dict"""
         return {
             fld.name: getattr(self, fld.name)
             for fld in self._fields()
@@ -151,14 +153,15 @@ class Model:
 
     @classmethod
     def query(cls):
+        """start query on model"""
         return Query(cls)
 
     @classmethod
     async def load(cls, cursor, key):
         """Load a database row by primary key.
         """
-        q = Query(cls).where(f'{quote(cls._primary().name)}=%s')
-        return await q.execute(cursor, key, one=True)
+        query = Query(cls).where(f'{quote(cls._primary().name)}=%s')
+        return await query.execute(cursor, key, one=True)
 
     async def save(self, cursor, insert=False):
         """Save object by primary key
@@ -179,12 +182,12 @@ class Model:
 
                2. This call will not change expression Fields.
         """
-        pk = self._primary()
-        self._updated = []
+        key = self._primary()
+        self._updated = []  # pylint: disable=attribute-defined-outside-init
         cursor.last_id = None
         cursor.query = None
         cursor.query_after = None
-        if insert or pk is None or getattr(self, pk.name) is None:
+        if insert or key is None or getattr(self, key.name) is None:
             new = True
             fields = self._db_insert() if insert else self._db_update()
             fields = [
@@ -203,7 +206,7 @@ class Model:
             ))
             args = [getattr(self, f) for f in fields]
         else:
-            if not getattr(self, pk.name):
+            if not getattr(self, key.name):
                 raise Exception('Model UPDATE requires a primary key')
             new = False
             fields = self._fields_to_update
@@ -215,20 +218,21 @@ class Model:
                 'SET',
                 ','.join([f'{quote(fld.column)}=%s' for fld in fields]),
                 'WHERE ',
-                f'{quote(pk.name)}=%s'
+                f'{quote(key.name)}=%s'
             ))
             args = [getattr(self, fld.name) for fld in fields]
-            args.append(getattr(self, pk.name))
+            args.append(getattr(self, key.name))
 
         stmt = stmt.format(Q=cursor.quote)
-        await cursor.execute(stmt, args, is_insert=new, pk=pk.name)
+        await cursor.execute(stmt, args, is_insert=new, pk=key.name)
 
         self._cache_field_values()
         if new:
-            if not insert and pk:
-                setattr(self, pk.name, cursor.last_id)
+            if not insert and key:
+                setattr(self, key.name, cursor.last_id)
         else:
-            self._updated = [field.name for field in fields]
+            self._updated = [  # pylint: disable=attribute-defined-outside-init
+                field.name for field in fields]
 
         return self
 
@@ -263,11 +267,11 @@ class Model:
 
     @property
     def _fields_to_update(self):
-        f = [
+        fields = [
             fld
             for fld in self._db_update()
             if getattr(self, fld.name) != self._orig[fld.name]
         ]
-        if len(f) == 0:
+        if len(fields) == 0:
             return None
-        return f
+        return fields

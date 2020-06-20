@@ -1,24 +1,28 @@
-'''
-The MIT License (MIT)
+"""query helper
 
-https://github.com/robertchase/spindrift/blob/master/LICENSE.txt
-'''
+The MIT License (MIT)
+https://github.com/robertchase/aiodb/blob/master/LICENSE.txt
+"""
+# pylint: disable=protected-access
 from ergaleia.import_by_path import import_by_path
 
 
 class Query:
+    """query constructor"""
 
     def __init__(self, table):
-        t = QueryTable(table)
-        self._tables = [t]
+        tab = QueryTable(table)
+        self._tables = [tab]
         self._where = None
         self._order = None
 
     def where(self, where=None):
+        """accept where clause"""
         self._where = where
         return self
 
     def order(self, order):
+        """accept order by clause"""
         self._order = order
         return self
 
@@ -87,14 +91,15 @@ class Query:
         else:
             raise ValueError("invalid outer join value: '{}'".format(outer))
 
-        qt = QueryTable(table, alias, field, join, table2, field2)
-        if qt.alias in [t.alias for t in self._tables]:
-            raise ValueError(f"duplicate table '{qt.alias}'")
-        self._tables.append(qt)
+        tab = QueryTable(table, alias, field, join, table2, field2)
+        if tab.alias in [t.alias for t in self._tables]:
+            raise ValueError(f"duplicate table '{tab.alias}'")
+        self._tables.append(tab)
 
         return self
 
-    def _build(self, one, limit, offset, for_update, quote):
+    def _build(self,  # pylint: disable=too-many-arguments
+               one, limit, offset, for_update, quote):
         if one and limit:
             raise Exception('one and limit parameters are mutually exclusive')
         if one:
@@ -112,8 +117,8 @@ class Query:
         if self._where:
             self._where = self._where.replace('{TABLE.', '{TABLE_')
             subs = dict(Q=quote)
-            for qt in self._tables:
-                subs['TABLE_' + qt.TABLE_name] = quote + qt.alias + quote
+            for qot in self._tables:
+                subs['TABLE_' + qot.table_name] = quote + qot.alias + quote
             stmt += ' WHERE ' + self._where.format(**subs)
         if self._order:
             stmt += ' ORDER BY ' + self._order
@@ -125,45 +130,50 @@ class Query:
             stmt += ' FOR UPDATE'
         return stmt
 
-    async def execute(self, cursor, args=None, one=False, limit=None,
+    async def execute(self,  # pylint: disable=too-many-arguments
+                      # pylint: disable=too-many-locals
+                      cursor, args=None, one=False, limit=None,
                       offset=None, for_update=False):
+        """execute query against database"""
 
         stmt = self._build(one, limit, offset, for_update, cursor.quote)
         columns, values = await cursor.execute(stmt, args)
         columns = [col.split('_', 1)[1] for col in columns]
 
         rows = []
-        for rs in values:
+        for rowdata in values:
             tables = None
-            row = [t for t in zip(columns, rs)]
+            row = list(zip(columns, rowdata))
             for table in self._tables:
                 val = dict(row[:table.column_count])
                 if val[table._primary().name] is None:
-                    o = None
+                    obj = None
                 else:
-                    o = table.cls(**val)
+                    obj = table.cls(**val)
                 if tables is None:
-                    primary_table = o
-                    o._tables = tables = {}
+                    primary_table = obj
+                    obj.tables = tables = {}
                 else:
-                    tables[table.alias] = o
+                    tables[table.alias] = obj
                 row = row[table.column_count:]
             rows.append(primary_table)
 
         if one:
-            rows = rows[0] if len(rows) else None
+            rows = rows[0] if rows else None
 
         return rows
 
 
-class QueryTable:
+class QueryTable:  # pylint: disable=too-many-instance-attributes
+    """container for a query table"""
 
-    def __init__(self, cls, alias=None, column=None, join_type=None,
+    def __init__(self,  # pylint: disable=too-many-arguments
+                 cls, alias=None, column=None, join_type=None,
                  join_table_name=None, join_column_name=None):
 
         self.cls = cls
         self.alias = alias or _camel(cls.__name__)
-        self.TABLE_name = alias or cls.__name__
+        self.table_name = alias or cls.__name__
         self.column_count = len(cls._fields())
 
         self.join_type = join_type
@@ -172,6 +182,7 @@ class QueryTable:
         self.join_table_column = join_column_name
 
     def join(self, quote):
+        """return join clause"""
         if self.join_type is None:
             return '{Q}{table}{Q} AS {Q}{alias}{Q}'.format(
                 Q=quote, table=self.name, alias=self.alias
@@ -193,6 +204,7 @@ class QueryTable:
 
     @property
     def name(self):
+        """return underlying table name"""
         return self.cls.__TABLENAME__
 
     def _fields(self):
@@ -265,13 +277,13 @@ def _pair(table, tables, table2=None):
 
     ref = _find_foreign_key_reference(table, tables)
     if ref:
-        t, field = ref
-        return field, t.alias, t._primary().name
+        tab, field = ref
+        return field, tab.alias, tab._primary().name
 
     ref = _find_primary_key_reference(table, tables)
     if ref:
-        t, field = ref
-        return table._primary().name, t.alias, field
+        tab, field = ref
+        return table._primary().name, tab.alias, field
 
     raise TypeError(
         "no primary or foreign key matches found for '{}'".format(

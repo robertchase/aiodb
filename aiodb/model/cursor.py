@@ -1,4 +1,8 @@
-class Raw:
+"""generic cursor"""
+
+
+class Raw:  # pylint: disable=too-few-public-methods
+    """raw sql string"""
 
     def __init__(self, data):
         self.data = data
@@ -7,10 +11,11 @@ class Raw:
         return f"Raw('{self.data}')"
 
 
-class Cursor:
+class Cursor:  # pylint: disable=too-many-instance-attributes
+    """abstract cursor class"""
 
-    def __init__(self, execute, serialize, close, quote='`',
-                 transactions=True):
+    def __init__(self,  # pylint: disable=too-many-arguments
+                 execute, serialize, close, quote='`', transactions=True):
         """Database cursor
 
            Abstract interface to a database. A cursor represents one
@@ -153,6 +158,7 @@ class Cursor:
                     select_expr
         """
         class Row:
+            """represent a row of a resultset"""
 
             def __init__(self, **kwargs):
                 self.__dict__.update(kwargs)
@@ -166,6 +172,6 @@ class Cursor:
         columns, rows = await self.execute(query, args=args)
         if rows:
             result = [Row(**(dict(zip(columns, row)))) for row in rows]
-            if one and len(result):
+            if one and result:
                 return result[0]
             return result

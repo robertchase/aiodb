@@ -1,3 +1,4 @@
+"""test fixtures and common code"""
 import asyncio
 from unittest import mock
 

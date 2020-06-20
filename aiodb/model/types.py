@@ -1,12 +1,15 @@
+"""manage generic database types"""
 import datetime
 
 
-def CHAR(length, is_strict=False):
+def CHAR(length, is_strict=False):  # pylint: disable=invalid-name
+    """represent a char string"""
 
-    class _char:
+    class _char:  # pylint: disable=too-few-public-methods
 
         @classmethod
         def parse(cls, value):
+            """normalize a char"""
             value = String.parse(value)
             if is_strict and len(value) > length:
                 raise ValueError('value is too long for field')
@@ -15,26 +18,32 @@ def CHAR(length, is_strict=False):
     return _char
 
 
-class Binary:
+class Binary:  # pylint: disable=too-few-public-methods
+    """represent a binary (not boolean) value"""
 
     @classmethod
     def parse(cls, value):
+        """normalize a binary value"""
         return value
 
 
-class String:
+class String:  # pylint: disable=too-few-public-methods
+    """represent a string"""
 
     @classmethod
     def parse(cls, value):
+        """normalize a string"""
         if value is None:
             raise ValueError('None is not a string value')
         return str(value)
 
 
-class Integer:
+class Integer:  # pylint: disable=too-few-public-methods
+    """represent an integer"""
 
     @classmethod
     def parse(cls, value):
+        """normalize an integer"""
         if value is None:
             raise ValueError('None is not an integer value')
         if int(value) != float(value):
@@ -42,10 +51,12 @@ class Integer:
         return int(value)
 
 
-class Boolean:
+class Boolean:  # pylint: disable=too-few-public-methods
+    """represent a boolean"""
 
     @classmethod
     def parse(cls, value):
+        """normalize a boolean value"""
         if value is None:
             raise ValueError('None is not a boolean value')
         if value in (True, 1):
@@ -59,28 +70,33 @@ class Boolean:
         raise ValueError(f"'{value}' is not a boolean")
 
 
-class Date:
+class Date:  # pylint: disable=too-few-public-methods
+    """represent a date"""
 
     @classmethod
     def parse(cls, value):
+        """normalize a date"""
         if value is None:
             raise ValueError('None is not a date value')
-        if type(value) == datetime.date:
-            return value
-        if type(value) == datetime.datetime:
+        # a date is not a datetime, but a datetime is a date (order matters)
+        if isinstance(value, datetime.datetime):
             return value.date()
+        if isinstance(value, datetime.date):
+            return value
         return datetime.datetime.strptime(value, '%Y-%m-%d').date()
 
 
-class Datetime:
+class Datetime:  # pylint: disable=too-few-public-methods
+    """represent a datetime"""
 
     @classmethod
     def parse(cls, value):
+        """normalize datetime value"""
         if value is None:
             raise ValueError('None is not a datetime value')
-        if type(value) == datetime.datetime:
+        if isinstance(value, datetime.datetime):
             return value
-        if type(value) == datetime.date:
+        if isinstance(value, datetime.date):
             return datetime.datetime(value.year, value.month, value.day)
         try:
             return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
@@ -89,15 +105,17 @@ class Datetime:
         return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
 
 
-class Time:
+class Time:  # pylint: disable=too-few-public-methods
+    """represent a time interval"""
 
     @classmethod
     def parse(cls, value):
+        """normalize time value"""
         if value is None:
             raise ValueError('None is not a time value')
-        if type(value) == datetime.time:
+        if isinstance(value, datetime.time):
             return value
-        if type(value) == datetime.timedelta:
+        if isinstance(value, datetime.timedelta):
             return value
         value = str(value)
         try:

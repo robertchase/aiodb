@@ -1,9 +1,12 @@
+"""test save operations"""
+# pylint: disable=protected-access
 from aiodb import Model, Field, Integer
 
 from aiodb.model.test.conftest import run_async
 
 
 class MockTable(Model):
+    """test model"""
 
     __TABLENAME__ = 'tester'
 
@@ -15,27 +18,27 @@ class MockTable(Model):
 def test_return(cursor):
     """verify that save returns the model"""
 
-    o = MockTable(name='test')
+    test = MockTable(name='test')
 
     # insert
-    result = run_async(o.save, cursor)
+    result = run_async(test.save, cursor)
     cursor._execute.assert_called_once()
-    assert o == result
+    assert test == result
 
     cursor._execute.reset_mock()
-    o.the_key = 10  # give it a PK
+    test.the_key = 10  # give it a PK
 
     # update with no changes
-    result = run_async(o.save, cursor)
+    result = run_async(test.save, cursor)
     cursor._execute.assert_not_called()
-    assert o == result
+    assert test == result
 
 
 def test_insert(cursor):
     """verify that before and after query reflect an insert"""
 
-    o = MockTable(name='test')
-    run_async(o.save, cursor)
+    test = MockTable(name='test')
+    run_async(test.save, cursor)
     assert cursor.query == \
         "INSERT INTO 'tester' ( 'name' ) VALUES ( %s )"
     assert cursor.query_after == \
@@ -45,8 +48,8 @@ def test_insert(cursor):
 def test_insert_multiple(cursor):
     """verify insert with multiple values"""
 
-    o = MockTable(name='test', yeah='lala')
-    run_async(o.save, cursor)
+    test = MockTable(name='test', yeah='lala')
+    run_async(test.save, cursor)
     assert cursor.query == \
         "INSERT INTO 'tester' ( 'name','yeah' ) VALUES ( %s,%s )"
     assert cursor.query_after == \
@@ -57,8 +60,8 @@ def test_quote(cursor):
     """test that cursor quote value shows up in insert statements"""
 
     cursor.quote = '!'
-    o = MockTable(name='test')
-    run_async(o.save, cursor)
+    test = MockTable(name='test')
+    run_async(test.save, cursor)
     assert cursor.query == \
         "INSERT INTO !tester! ( !name! ) VALUES ( %s )"
 
@@ -70,25 +73,25 @@ def test_insert_pk(cursor):
        execute it uses cursor.last_id to update the primary key of an inserted
        object.
     """
-    ID = 100
+    primary_key = 100
 
-    async def execute(*args, **kwargs):
+    async def execute(*args, **kwargs):  # pylint: disable=unused-argument
         """set last_id during execute call, since save cleared it"""
-        cursor.last_id = ID
+        cursor.last_id = primary_key
 
-    o = MockTable(name='test', yeah='lala')
+    test = MockTable(name='test', yeah='lala')
     cursor._execute = execute
-    run_async(o.save, cursor)
-    assert o.the_key == ID
+    run_async(test.save, cursor)
+    assert test.the_key == primary_key
 
 
 def test_update(cursor):
     """verify update"""
 
-    o = MockTable(the_key=10, name='a', yeah='a')
-    o.name = 'test'
-    o.yeah = 'lala'
-    run_async(o.save, cursor)
+    test = MockTable(the_key=10, name='a', yeah='a')
+    test.name = 'test'
+    test.yeah = 'lala'
+    run_async(test.save, cursor)
     assert cursor.query == \
         "UPDATE  'tester' SET 'name'=%s,'yeah'=%s WHERE  'the_key'=%s"
     assert cursor.query_after == \
@@ -98,24 +101,24 @@ def test_update(cursor):
 def test_insert_updated(cursor):
     """verify empty updated attribute on insert"""
 
-    o = MockTable(name='a', yeah='a')
-    run_async(o.save, cursor)
-    assert o._updated == []
+    test = MockTable(name='a', yeah='a')
+    run_async(test.save, cursor)
+    assert test._updated == []
 
 
 def test_update_updated(cursor):
     """verify updated attribute"""
 
-    o = MockTable(the_key=10, name='a', yeah='a')
+    test = MockTable(the_key=10, name='a', yeah='a')
 
-    o.name = 'test'
-    run_async(o.save, cursor)
-    assert o._updated == ['name']
+    test.name = 'test'
+    run_async(test.save, cursor)
+    assert test._updated == ['name']
 
-    o.name = 'foo'
-    o.yeah = 'bar'
-    run_async(o.save, cursor)
-    assert o._updated == ['name', 'yeah']
+    test.name = 'foo'
+    test.yeah = 'bar'
+    run_async(test.save, cursor)
+    assert test._updated == ['name', 'yeah']
 
-    run_async(o.save, cursor)  # nothing changed
-    assert o._updated == []
+    run_async(test.save, cursor)  # nothing changed
+    assert test._updated == []

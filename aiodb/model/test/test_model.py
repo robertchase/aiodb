@@ -1,3 +1,5 @@
+"""test model operation"""
+# pylint: disable=protected-access
 import pytest
 from aiodb import Model, Field
 from aiodb import ReservedAttributeError, RequiredAttributeError
@@ -5,73 +7,85 @@ from aiodb import NoneValueError, MultiplePrimaryKeysError
 
 
 def test_reserved():
+    """verify reserved operation"""
 
-    class test(Model):
+    class Test(Model):
+        """model with a field name violating reserved words"""
         save = Field()
 
     with pytest.raises(ReservedAttributeError):
-        test()
+        Test()
 
 
 def test_name():
+    """verify column field setting"""
 
-    class test(Model):
-        foo = Field(column='select', is_nullable=True)
+    class Test(Model):
+        """model with a field using column"""
+        yeah = Field(column='select', is_nullable=True)
 
-    t = test()
-    assert t._field('foo').name == 'foo'
-    assert t._field('foo').column == 'select'
+    test = Test()
+    assert test._field('yeah').name == 'yeah'
+    assert test._field('yeah').column == 'select'
 
 
 def test_required():
+    """verify required field setting"""
 
-    class test(Model):
+    class Test(Model):
+        """model with one required field"""
         test = Field()
-        test_read = Field(is_readonly=True)
 
     with pytest.raises(RequiredAttributeError):
-        test()
+        Test()
 
-    test(test='foo')
+    Test(test='foo')
 
 
 def test_default():
+    """verify default field setting"""
 
     default = 'abc'
 
-    class test(Model):
+    class Test(Model):
+        """model with default field"""
         test = Field(default=default)
 
-    t = test()
-    assert t.test == default
-    t = test(test=default * 2)
-    assert t.test != default
+    test = Test()
+    assert test.test == default
+    test = Test(test=default * 2)
+    assert test.test != default
 
 
 def test_is_nullable():
+    """verify enforcement of nullable fields"""
 
-    class test(Model):
+    class Test(Model):
+        """model with nullable and not-nullable fields"""
         test = Field()
         nullable = Field(is_nullable=True)
 
-    test(test='something')
-    test(test='somethng', nullable='nothing')
+    Test(test='something')
+    Test(test='somethng', nullable='nothing')
     with pytest.raises(NoneValueError):
-        test(test=None)
+        Test(test=None)
 
 
 def test_multiple_primary():
+    """test prevention of multiple primary keys"""
 
-    class test(Model):
+    class Test(Model):
+        """bad model with multiple primary keys"""
         id = Field(default=0, is_primary=True)
         idd = Field(default=0, is_primary=True)
 
-    t = test()
+    test = Test()
     with pytest.raises(MultiplePrimaryKeysError):
-        assert t._primary().name == 'id'
+        assert test._primary().name == 'id'
 
 
-class field_test(Model):
+class FieldTest(Model):
+    """helper class for verify tests"""
     a = Field(is_primary=True)
     b = Field()
     c = Field(expression='foo')
@@ -79,30 +93,36 @@ class field_test(Model):
 
 
 def test_field():
-    t = field_test(a=0, b=0, c=0, d=0)
-    assert t._field('a').name == 'a'
+    """verify _field"""
+    test = FieldTest(a=0, b=0, c=0, d=0)
+    assert test._field('a').name == 'a'
 
 
 def test_fields():
-    t = field_test(a=0, b=0, c=0, d=0)
-    assert sorted(f.name for f in t._fields()) == ['a', 'b', 'c', 'd']
+    """verify _fields"""
+    test = FieldTest(a=0, b=0, c=0, d=0)
+    assert sorted(f.name for f in test._fields()) == ['a', 'b', 'c', 'd']
 
 
 def test_primary():
-    t = field_test(a=0, b=0, c=0, d=0)
-    assert t._primary().name == 'a'
+    """verify _primary"""
+    test = FieldTest(a=0, b=0, c=0, d=0)
+    assert test._primary().name == 'a'
 
 
 def test_db_read():
-    t = field_test(a=0, b=0, c=0, d=0)
-    assert sorted(f.name for f in t._db_read()) == ['a', 'b', 'c']
+    """verify _db_read"""
+    test = FieldTest(a=0, b=0, c=0, d=0)
+    assert sorted(f.name for f in test._db_read()) == ['a', 'b', 'c']
 
 
 def test_db_insert():
-    t = field_test(a=0, b=0, c=0, d=0)
-    assert sorted(f.name for f in t._db_insert()) == ['a', 'b']
+    """verify _db_insert"""
+    test = FieldTest(a=0, b=0, c=0, d=0)
+    assert sorted(f.name for f in test._db_insert()) == ['a', 'b']
 
 
 def test_db_update():
-    t = field_test(a=0, b=0, c=0, d=0)
-    assert sorted(f.name for f in t._db_update()) == ['b']
+    """verify _db_update"""
+    test = FieldTest(a=0, b=0, c=0, d=0)
+    assert sorted(f.name for f in test._db_update()) == ['b']
