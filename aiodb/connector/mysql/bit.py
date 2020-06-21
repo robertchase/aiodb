@@ -1,10 +1,15 @@
+"""Bit support"""
+
+
 class Bit:
+    """represent value from bit column"""
 
     def __init__(self, length):
         self.length = length
         self.value = None
 
     def as_binary(self):
+        """convert to string of ones and zeros"""
         return f'{self.value:>b}'
 
     def __call__(self, value):

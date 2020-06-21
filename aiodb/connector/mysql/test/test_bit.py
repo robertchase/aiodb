@@ -1,10 +1,11 @@
+"""test Bit operations"""
 import pytest
 
 from aiodb.connector.mysql.bit import Bit
 
 
 @pytest.mark.parametrize(
-    'length, input, expected', (
+    'length, value, expected', (
         (10, None, ValueError),
         (10, 1, 1),
         (10, '123', TypeError),
@@ -15,15 +16,17 @@ from aiodb.connector.mysql.bit import Bit
         (10, '01000000000', ValueError),
     ),
 )
-def test_from_date(length, input, expected):
+def test_bit(length, value, expected):
+    """test different inputs"""
     bit = Bit(length)
     if expected in (ValueError, TypeError):
         with pytest.raises(expected):
-            bit(input)
+            bit(value)
     else:
-        assert bit(input).value == expected
+        assert bit(value).value == expected
 
 
 def test_as_binary():
+    """verify binary conversion"""
     bit = Bit(5)(10)
     assert bit.as_binary() == '1010'

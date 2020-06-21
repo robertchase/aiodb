@@ -1,22 +1,30 @@
+"""manage charsets"""
+
+
 MBLENGTH = {
-        8: 1,
-        33: 3,
-        88: 2,
-        91: 2
-        }
+    8: 1,
+    33: 3,
+    88: 2,
+    91: 2
+}
 
 
-class Charset(object):
-    def __init__(self, id, name, collation, is_default):
-        self.id, self.name, self.collation = id, name, collation
+class Charset:
+    """container for a charset"""
+
+    def __init__(self, key, name, collation, is_default):
+        self.id = key  # pylint: disable=invalid-name
+        self.name = name
+        self.collation = collation
         self.is_default = is_default == 'Yes'
 
     def __repr__(self):
         return "Charset(id=%s, name=%r, collation=%r)" % (
-                self.id, self.name, self.collation)
+            self.id, self.name, self.collation)
 
     @property
     def encoding(self):
+        """return encoding for charset"""
         name = self.name
         if name == 'utf8mb4':
             return 'utf8'
@@ -24,24 +32,31 @@ class Charset(object):
 
     @property
     def is_binary(self):
+        """indicate if charset is binary"""
         return self.id == 63
 
 
 class Charsets:
+    """manage charsets"""
+
     def __init__(self):
         self._by_id = {}
 
-    def add(self, c):
-        self._by_id[c.id] = c
+    def add(self, cset):
+        """add a charset"""
+        self._by_id[cset.id] = cset
 
-    def by_id(self, id):
-        return self._by_id[id]
+    def by_id(self, key):
+        """return a charset by id"""
+        return self._by_id[key]
 
     def by_name(self, name):
+        """return a charset by name"""
         name = name.lower()
-        for c in self._by_id.values():
-            if c.name == name and c.is_default:
-                return c
+        for cset in self._by_id.values():
+            if cset.name == name and cset.is_default:
+                return cset
+        return None
 
 
 _charsets = Charsets()

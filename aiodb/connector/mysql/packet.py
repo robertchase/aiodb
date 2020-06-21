@@ -1,3 +1,4 @@
+"""mysql packet handling routines"""
 import struct
 
 import aiodb.connector.mysql.charset as charset
@@ -15,59 +16,63 @@ UNSIGNED_INT64_COLUMN = 254
 
 
 def serialize(payload, sequence):
+    """serialize data for transport to mysql"""
     length = struct.pack('<I', len(payload))[:3]
     sequence = struct.pack("!B", sequence)
     return length + sequence + payload
 
 
 class Packet:
+    """generic packet"""
 
     def __init__(self, data):
         self.data = data
         self.position = 0
 
     def read(self, size):
+        """read 'size' bytes from data"""
         result = self.data[self.position:self.position+size]
         self.position += size
         return result
 
     def read_all(self):
+        """read remainder from data"""
         result = self.data[self.position:]
         self.position = None  # ensure no subsequent read()
         return result
 
     def read_uint8(self):
+        """read uint8 from data"""
         result = self.data[self.position]
         self.position += 1
         return result
 
     def read_uint16(self):
+        """read uint16 from data"""
         result = struct.unpack_from('<H', self.data, self.position)[0]
         self.position += 2
         return result
 
     def read_uint24(self):
+        """read uint24 from data"""
         low, high = struct.unpack_from('<HB', self.data, self.position)
         self.position += 3
         return low + (high << 16)
 
     def read_uint32(self):
+        """read uint32 from data"""
         result = struct.unpack_from('<I', self.data, self.position)[0]
         self.position += 4
         return result
 
     def read_uint64(self):
+        """read uint64 from data"""
         result = struct.unpack_from('<Q', self.data, self.position)[0]
         self.position += 8
         return result
 
-    def read_struct(self, fmt):
-        s = struct.Struct(fmt)
-        result = s.unpack_from(self.data, self.position)
-        self.position += s.size
-        return result
-
     def read_string(self):
+        """read a string from data"""
         end_pos = self.data.find(b'\0', self.position)
         if end_pos < 0:
             return None
@@ -81,17 +86,18 @@ class Packet:
         Length coded numbers can be anywhere from 1 to 9 bytes depending
         on the value of the first byte.
         """
-        c = self.read_uint8()
-        if c == NULL_COLUMN:
+        num = self.read_uint8()
+        if num == NULL_COLUMN:
             return None
-        if c < UNSIGNED_CHAR_COLUMN:
-            return c
-        elif c == UNSIGNED_SHORT_COLUMN:
+        if num < UNSIGNED_CHAR_COLUMN:
+            return num
+        if num == UNSIGNED_SHORT_COLUMN:
             return self.read_uint16()
-        elif c == UNSIGNED_INT24_COLUMN:
+        if num == UNSIGNED_INT24_COLUMN:
             return self.read_uint24()
-        elif c == UNSIGNED_INT64_COLUMN:
+        if num == UNSIGNED_INT64_COLUMN:
             return self.read_uint64()
+        return None
 
     def read_length_coded_string(self):
         """Read a 'Length Coded String' from the data buffer.
@@ -106,7 +112,8 @@ class Packet:
         return self.read(length)
 
 
-class Handshake(Packet):
+class Handshake(Packet):  # pylint: disable=too-many-instance-attributes
+    """mysql handshake packet"""
 
     def __init__(self, data):
         # https://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::Handshake
@@ -166,10 +173,12 @@ class Handshake(Packet):
 
     @property
     def autocommit(self):
+        """indicate autocommit setting"""
         return bool(self.server_status & SERVER_STATUS.AUTOCOMMIT)
 
 
 def handshake_response(handshake, user, password, database=None):
+    """create response to handshake success"""
     charset_id = charset.charset_by_name('utf8').id
     encoding = charset.charset_by_name('utf8').encoding
 
@@ -194,6 +203,7 @@ def handshake_response(handshake, user, password, database=None):
 
 
 def generic(data):
+    """handle generic data arrival"""
     if is_ok(data):
         return OK(data)
     if is_eof(data):
@@ -206,6 +216,7 @@ def generic(data):
 
 
 def query_response(data):
+    """return packet from data containing query response"""
     if is_ok(data):
         return OK(data)
     if is_error(data):
@@ -214,18 +225,22 @@ def query_response(data):
 
 
 def is_ok(data):
+    """check for ok indication in data"""
     return data[0] == 0
 
 
 def is_eof(data):
+    """check for eof indication in data"""
     return data[0] == 254
 
 
 def is_error(data):
+    """check for error indication in data"""
     return data[0] == 255
 
 
-class FIELD_LENGTH(Packet):
+class FIELD_LENGTH(Packet):  # pylint: disable=invalid-name
+    """mysql field length packet"""
 
     def __init__(self, data):
         super().__init__(data)
@@ -241,6 +256,7 @@ class FIELD_LENGTH(Packet):
 
 
 class OK(Packet):
+    """mysql ok packet"""
 
     def __init__(self, data):
         super().__init__(data)
@@ -254,6 +270,7 @@ class OK(Packet):
 
     @property
     def has_next(self):
+        """return True if packet indicates more results coming"""
         return self.status_flags & SERVER_STATUS.SERVER_MORE_RESULTS_EXISTS
 
     def __repr__(self):
@@ -270,6 +287,7 @@ class OK(Packet):
 
 
 class EOF(Packet):
+    """mysql eof packet"""
 
     def __init__(self, data):
         super().__init__(data)
@@ -288,6 +306,7 @@ class EOF(Packet):
 
 
 class ERR(Packet):
+    """mysql error packet"""
 
     def __init__(self, data):
         super().__init__(data)
@@ -309,7 +328,8 @@ class ERR(Packet):
         )
 
 
-class ColumnDefinition(Packet):
+class ColumnDefinition(Packet):  # pylint: disable=too-many-instance-attributes
+    """mysql column definition packet"""
 
     def __init__(self, data):
         super().__init__(data)
@@ -320,8 +340,11 @@ class ColumnDefinition(Packet):
         self.org_table = self.read_length_coded_string()
         self.name = self.read_length_coded_string()
         self.org_name = self.read_length_coded_string()
+
+        header = struct.Struct('<xHIBHBxx')
         self.character_set, self.length, self.type, self.flags, \
-            self.decimals = (self.read_struct('<xHIBHBxx'))
+            self.decimals = header.unpack_from(self.data, self.position)
+        self.position += header.size
 
     def __repr__(self):
         return (
@@ -341,7 +364,8 @@ class ColumnDefinition(Packet):
         )
 
 
-class Context:
+class Context:  # pylint: disable=too-few-public-methods
+    """fsm context for packet"""
 
     def __init__(self, on_packet=None):
         self.data = b''
@@ -349,38 +373,47 @@ class Context:
         self.clear()
 
     def clear(self):
+        """clear context contents"""
         self.length = None
         self.sequence = None
         self.payload = None
 
 
 def act_clear(context):
+    """action routine for clear"""
     context.clear()
-    if len(context.data):
+    if context.data:
         return 'data'
+    return None
 
 
 def act_data(context, data=None):
+    """action routine for data"""
     if data:
         context.data += data
 
 
 def act_length(context):
+    """action routine for length"""
     if len(context.data) >= 4:
         low, high, packet_number = struct.unpack('<HBB', context.data[:4])
         context.length = low + (high << 16)
         context.sequence = packet_number
         context.data = context.data[4:]
         return 'complete'
+    return None
 
 
 def act_packet(context):
+    """action routine for packet"""
     context.on_packet(context.payload, context.sequence)
 
 
 def act_payload(context):
+    """action routine for payload"""
     length = context.length
     if len(context.data) >= length:
         context.payload = context.data[:length]
         context.data = context.data[length:]
         return 'complete'
+    return None

@@ -1,3 +1,4 @@
+"""test serializer operation"""
 import datetime
 import pytest
 
@@ -5,7 +6,7 @@ import aiodb.connector.mysql.serializer as serializer
 
 
 @pytest.mark.parametrize(
-    'input,expected', (
+    'value,expected', (
         # normal
         ('a', "'a'"),
         # quotes
@@ -29,90 +30,96 @@ import aiodb.connector.mysql.serializer as serializer
         ((' "abc"\r\n, \t\x00123'), ("' \"abc\"\\r\\n, \\t\\0123'")),
     ),
 )
-def test_string(input, expected):
-    assert serializer.from_string(input) == expected
+def test_string(value, expected):
+    """test from_string"""
+    assert serializer.from_string(value) == expected
 
 
-date_string = '2020-01-02'
-date_date = datetime.datetime(2020, 1, 2).date()
-date_datetime = datetime.datetime(2020, 1, 2, 12)
+DATE_STRING = '2020-01-02'
+DATE_DATE = datetime.datetime(2020, 1, 2).date()
+DATE_DATETIME = datetime.datetime(2020, 1, 2, 12)
 
 
 @pytest.mark.parametrize(
-    'input,expected', (
-        (date_date, f"'{date_string}'"),
-        (date_datetime, f"'{date_string}'"),
+    'value,expected', (
+        (DATE_DATE, f"'{DATE_STRING}'"),
+        (DATE_DATETIME, f"'{DATE_STRING}'"),
     ),
 )
-def test_from_date(input, expected):
+def test_from_date(value, expected):
+    """test from_date"""
     if expected in (ValueError, TypeError):
         with pytest.raises(expected):
-            serializer.from_date(input)
+            serializer.from_date(value)
     else:
-        assert serializer.from_date(input) == expected
+        assert serializer.from_date(value) == expected
 
 
-datetime_string = '2020-01-02 11:12:13.000000'
-datetime_date = datetime.datetime(2020, 1, 2).date()
-datetime_datetime = datetime.datetime(2020, 1, 2, 11, 12, 13)
+DATETIME_STRING = '2020-01-02 11:12:13.000000'
+DATETIME_DATE = datetime.datetime(2020, 1, 2).date()
+DATETIME_DATETIME = datetime.datetime(2020, 1, 2, 11, 12, 13)
 
 
 @pytest.mark.parametrize(
-    'input,expected', (
-        (datetime_date, f"'{date_string} 00:00:00.000000'"),
-        (datetime_datetime, f"'{datetime_string}'"),
+    'value,expected', (
+        (DATETIME_DATE, f"'{DATE_STRING} 00:00:00.000000'"),
+        (DATETIME_DATETIME, f"'{DATETIME_STRING}'"),
     ),
 )
-def test_from_datetime(input, expected):
+def test_from_datetime(value, expected):
+    """test from_datetime"""
     if expected in (ValueError, TypeError):
         with pytest.raises(expected):
-            serializer.from_datetime(input)
+            serializer.from_datetime(value)
     else:
-        assert serializer.from_datetime(input) == expected
+        assert serializer.from_datetime(value) == expected
 
 
-time_string = '01:01:01'
-time_time = datetime.time(1, 1, 1)
-time_delta = datetime.timedelta(seconds=3600 + 60 + 1)
-time_mu_string = '01:01:01.000123'
-time_mu_time = datetime.time(1, 1, 1, 123)
-time_mu_delta = datetime.timedelta(seconds=3600 + 60 + 1, microseconds=123)
+TIME_STRING = '01:01:01'
+TIME_TIME = datetime.time(1, 1, 1)
+TIME_DELTA = datetime.timedelta(seconds=3600 + 60 + 1)
+TIME_MU_STRING = '01:01:01.000123'
+TIME_MU_TIME = datetime.time(1, 1, 1, 123)
+TIME_MU_DELTA = datetime.timedelta(seconds=3600 + 60 + 1, microseconds=123)
 
 
 @pytest.mark.parametrize(
-    'input,expected', (
-        (time_delta, f"'{time_string}'"),
-        (time_mu_delta, f"'{time_mu_string}'"),
+    'value,expected', (
+        (TIME_DELTA, f"'{TIME_STRING}'"),
+        (TIME_MU_DELTA, f"'{TIME_MU_STRING}'"),
     ),
 )
-def test_from_timedelta(input, expected):
+def test_from_timedelta(value, expected):
+    """test from_timedelta"""
     if expected in (ValueError, TypeError):
         with pytest.raises(expected):
-            serializer.from_timedelta(input)
+            serializer.from_timedelta(value)
     else:
-        assert serializer.from_timedelta(input) == expected
+        assert serializer.from_timedelta(value) == expected
 
 
 @pytest.mark.parametrize(
-    'input,expected', (
-        (time_time, f"'{time_string}'"),
-        (time_mu_time, f"'{time_mu_string}'"),
+    'value,expected', (
+        (TIME_TIME, f"'{TIME_STRING}'"),
+        (TIME_MU_TIME, f"'{TIME_MU_STRING}'"),
     ),
 )
-def test_from_time(input, expected):
+def test_from_time(value, expected):
+    """test from_time"""
     if expected in (ValueError, TypeError):
         with pytest.raises(expected):
-            serializer.from_time(input)
+            serializer.from_time(value)
     else:
-        assert serializer.from_time(input) == expected
+        assert serializer.from_time(value) == expected
 
 
 @pytest.mark.parametrize(
-    'input,expected', (
+    'value,expected', (
         (set(('a', 'b')), ("'a,b'", "'b,a'")),
         (set((1, 'b')), ("'1,b'", "'b,1'")),
         (set((1, 2)), ("'1,2'", "'2,1'")),
     ),
 )
-def test_from_set(input, expected):
-    assert serializer.from_set(input) in expected
+def test_from_set(value, expected):
+    """test from_set"""
+    assert serializer.from_set(value) in expected

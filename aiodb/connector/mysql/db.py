@@ -1,18 +1,22 @@
+"""mysql connector"""
 import asyncio
 import logging
 
 from fsm.parser import Parser as parser
 
-from .serializer import to_mysql
 from aiodb import Cursor
+from .serializer import to_mysql
 
 
 log = logging.getLogger(__name__)
 
 
-class DB:
+class DB:  # pylint: disable=too-few-public-methods
+    # pylint: disable=too-many-instance-attributes
+    """mysql-specific database connector"""
 
-    def __init__(self, host='mysql', port=3306, user='', password='',
+    def __init__(self,  # pylint: disable=too-many-arguments
+                 host='mysql', port=3306, user='', password='',
                  database=None, autocommit=None, isolation=None, debug=False,
                  commit=True):
         self.host = host
@@ -31,14 +35,24 @@ class DB:
         self.connection = parser.parse('aiodb.connector.mysql.connection.fsm')
 
     async def cursor(self):
+        """return mysql connection"""
         return await MysqlHandler(self).connect(self.host, self.port)
 
 
 def trace(state, event, dflt, is_internal):
-    log.debug(f'FSM: s={state}, e={event}, d={dflt}, i={is_internal}')
+    """log message on event"""
+    msg = f'FSM: s={state}, e={event}, d={dflt}, i={is_internal}'
+    log.debug(msg)
+
+
+def on_undefined(state, event, *args):  # pylint: disable=unused-argument
+    """log message on undefined event"""
+    msg = f"event '{event}' not handled in state '{state}'"
+    log.debug(msg)
 
 
 class MysqlHandler:
+    """mysql specific handler"""
 
     def __init__(self, db):
         self.packet_fsm = db.packet.compile(
@@ -54,8 +68,11 @@ class MysqlHandler:
         )
         if db.debug:
             self.fsm.trace = trace
-        self.fsm.undefined = self.on_undefined
+        self.fsm.undefined = on_undefined
         self._send = False
+
+        self.reader = None
+        self.writer = None
 
         self.cursor = Cursor(
             self.execute,
@@ -66,30 +83,33 @@ class MysqlHandler:
         )
 
     async def connect(self, host, port):
+        """connect to database"""
         self.reader, self.writer = await asyncio.open_connection(host, port)
         while not self.is_connected:
             await self.read()
         return self.cursor
 
     async def close(self):
+        """close the database connection"""
         self.writer.close()
         await self.writer.wait_closed()
 
     def send(self, data):
+        """send data to database"""
         self.writer.write(data)
         self._send = True
 
     async def read(self, length=1000):
+        """read up to 1000 bytes from the database"""
         data = await self.reader.read(length)
         self.packet_fsm.handle('data', data)
         if self._send:
             await self.writer.drain()
             self._send = False
 
-    def on_undefined(self, state, event, *args):
-        log.debug(f"event '{event}' not handled in state '{state}'")
-
-    async def execute(self, query, args=None, **kwargs):
+    async def execute(self, query,
+                      **kwargs):  # pylint: disable=unused-argument
+        """send query to database and wait for response"""
         cur = self.cursor
         ctx = self.fsm.context
 
@@ -104,9 +124,11 @@ class MysqlHandler:
         return ctx.result_set
 
     def on_packet(self, packet, sequence):
+        """handle arrival of packet"""
         if not self.fsm.handle('packet', packet, sequence):
             self.close()
 
     @property
     def is_connected(self):
+        """return True if connected to database"""
         return self.fsm.context.is_connected

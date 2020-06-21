@@ -1,21 +1,20 @@
+"""tests for various column types"""
 import datetime
 from decimal import Decimal
+
 import pytest
 
 from aiodb.connector.mysql.bit import Bit
 
 
-async def _handle(cursor, column, value, expect=None):
+async def _handle(db_defn, column, value, expect=None):
+    cursor = await db_defn.cursor()
     insert = f'INSERT INTO `test` (`{column}`)VALUES(%s)'
     await cursor.execute(insert, value)
-    print(cursor.query_after)
 
     select = f'SELECT `{column}` FROM `test`WHERE id=%s'
-    names, tuples = await cursor.execute(select, cursor.last_id)
+    _, tuples = await cursor.execute(select, cursor.last_id)
     item = tuples[0][0]  # first row, first column
-
-    print(cursor.query_after)
-    print('item', type(item), tuples[0])
 
     if expect is None:
         assert item == value
@@ -25,461 +24,121 @@ async def _handle(cursor, column, value, expect=None):
     await cursor.close()
 
 
-@pytest.mark.asyncio
-async def test_decimal(cursor):
-    await _handle(cursor, 'a_dec', Decimal('123.456'))
-
-
-@pytest.mark.asyncio
-async def test_tinyint_zero(cursor):
-    await _handle(cursor, 'b_tin', 0)
-
-
-@pytest.mark.asyncio
-async def test_tinyint_integer(cursor):
-    await _handle(cursor, 'b_tin', 10)
-
-
-@pytest.mark.asyncio
-async def test_tinyint_float(cursor):
-    await _handle(cursor, 'b_tin', 100.1, expect=100)
-
-
-@pytest.mark.asyncio
-async def test_tinyint_negative(cursor):
-    await _handle(cursor, 'b_tin', -10)
-
-
-@pytest.mark.asyncio
-async def test_smallint_zero(cursor):
-    await _handle(cursor, 'b_sma', 0)
-
-
-@pytest.mark.asyncio
-async def test_smallint_integer(cursor):
-    await _handle(cursor, 'b_sma', 10)
-
-
-@pytest.mark.asyncio
-async def test_smallint(cursor):
-    await _handle(cursor, 'b_sma', '100', expect=100)
-
-
-@pytest.mark.asyncio
-async def test_smallint_float(cursor):
-    await _handle(cursor, 'b_sma', 100.1, expect=100)
-
-
-@pytest.mark.asyncio
-async def test_smallint_negative(cursor):
-    await _handle(cursor, 'b_sma', -10)
-
-
-@pytest.mark.asyncio
-async def test_mediumint_zero(cursor):
-    await _handle(cursor, 'b_med', 0)
-
-
-@pytest.mark.asyncio
-async def test_mediumint_integer(cursor):
-    await _handle(cursor, 'b_med', 10)
-
-
-@pytest.mark.asyncio
-async def test_mediumint_float(cursor):
-    await _handle(cursor, 'b_med', 100.1, expect=100)
-
-
-@pytest.mark.asyncio
-async def test_mediumint_negative(cursor):
-    await _handle(cursor, 'b_med', -10)
-
-
-@pytest.mark.asyncio
-async def test_int_zero(cursor):
-    await _handle(cursor, 'b_int', 0)
-
-
-@pytest.mark.asyncio
-async def test_int_integer(cursor):
-    await _handle(cursor, 'b_int', 10)
-
-
-@pytest.mark.asyncio
-async def test_int_float(cursor):
-    await _handle(cursor, 'b_int', 100.1, expect=100)
-
-
-@pytest.mark.asyncio
-async def test_int_negative(cursor):
-    await _handle(cursor, 'b_int', -10)
-
-
-@pytest.mark.asyncio
-async def test_big_int_zero(cursor):
-    await _handle(cursor, 'b_big', 0)
-
-
-@pytest.mark.asyncio
-async def test_big_int_integer(cursor):
-    await _handle(cursor, 'b_big', 10)
-
-
-@pytest.mark.asyncio
-async def test_big_int_float(cursor):
-    await _handle(cursor, 'b_big', 100.1, expect=100)
-
-
-@pytest.mark.asyncio
-async def test_big_int_negative(cursor):
-    await _handle(cursor, 'b_big', -10)
-
-
-@pytest.mark.asyncio
-async def test_float_zero(cursor):
-    await _handle(cursor, 'c_flo', 0)
-
-
-@pytest.mark.asyncio
-async def test_float_one(cursor):
-    await _handle(cursor, 'c_flo', 1)
-
-
-@pytest.mark.asyncio
-async def test_float_neg_one(cursor):
-    await _handle(cursor, 'c_flo', -1)
-
-
-@pytest.mark.asyncio
-async def test_float_fraction(cursor):
-    await _handle(cursor, 'c_flo', 0.1)
-
-
-@pytest.mark.asyncio
-async def test_float_neg_fraction(cursor):
-    await _handle(cursor, 'c_flo', -0.1)
-
-
-@pytest.mark.asyncio
-async def test_float_float(cursor):
-    await _handle(cursor, 'c_flo', 123.456)
-
-
-@pytest.mark.asyncio
-async def test_float_string(cursor):
-    await _handle(cursor, 'c_flo', '123.456', expect=123.456)
-
-
-@pytest.mark.asyncio
-async def test_double_zero(cursor):
-    await _handle(cursor, 'd_dou', 0)
-
-
-@pytest.mark.asyncio
-async def test_double_one(cursor):
-    await _handle(cursor, 'd_dou', 1)
-
-
-@pytest.mark.asyncio
-async def test_double_neg_one(cursor):
-    await _handle(cursor, 'd_dou', -1)
-
-
-@pytest.mark.asyncio
-async def test_double_fraction(cursor):
-    await _handle(cursor, 'd_dou', 0.1)
-
-
-@pytest.mark.asyncio
-async def test_double_neg_fraction(cursor):
-    await _handle(cursor, 'd_dou', -0.1)
-
-
-@pytest.mark.asyncio
-async def test_double_float(cursor):
-    await _handle(cursor, 'd_dou', 123.456)
-
-
-@pytest.mark.asyncio
-async def test_double_float_string(cursor):
-    await _handle(cursor, 'd_dou', '123.456', expect=123.456)
-
-
-@pytest.mark.asyncio
-async def test_bit(cursor):
-    b = Bit(5)(10)
-    await _handle(cursor, 'e_bit', b, expect=10)
-
-
-@pytest.mark.asyncio
-async def test_datetime_string_date(cursor):
-    await _handle(cursor,
-                  'f_dtm',
-                  '2020-01-02',
-                  expect=datetime.datetime(2020, 1, 2))
-
-
-@pytest.mark.asyncio
-async def test_datetime_string(cursor):
-    await _handle(cursor,
-                  'f_dtm',
-                  '2020-01-02 12:13:14',
-                  expect=datetime.datetime(2020, 1, 2, 12, 13, 14))
-
-
-@pytest.mark.asyncio
-async def test_datetime_datetime(cursor):
-    await _handle(cursor,
-                  'f_dtf',
-                  datetime.datetime(2020, 1, 2, 12, 13, 14))
-
-
-@pytest.mark.asyncio
-async def test_datetime_datetime_with_ms(cursor):
-    await _handle(cursor,
-                  'f_dtf',
-                  datetime.datetime(2020, 1, 2, 12, 13, 14, 321))
-
-
-@pytest.mark.asyncio
-async def test_timestamp_string_date(cursor):
-    await _handle(cursor,
-                  'f_tms',
-                  '2020-01-02',
-                  expect=datetime.datetime(2020, 1, 2))
-
-
-@pytest.mark.asyncio
-async def test_timestamp_string(cursor):
-    await _handle(cursor,
-                  'f_tms',
-                  '2020-01-02 12:13:14',
-                  expect=datetime.datetime(2020, 1, 2, 12, 13, 14))
-
-
-@pytest.mark.asyncio
-async def test_timestamp_datetime(cursor):
-    await _handle(cursor,
-                  'f_tms',
-                  datetime.datetime(2020, 1, 2, 12, 13, 14))
-
-
-@pytest.mark.asyncio
-async def test_timestamp_datetime_ms(cursor):
-    await _handle(cursor,
-                  'f_tms',
-                  datetime.datetime(2020, 1, 2, 12, 13, 14, 321))
-
-
-@pytest.mark.asyncio
-async def test_date_string(cursor):
-    await _handle(cursor,
-                  'f_dat',
-                  '2020-01-02',
-                  expect=datetime.date(2020, 1, 2))
-
-
-@pytest.mark.asyncio
-async def test_date_string_time(cursor):
-    await _handle(cursor,
-                  'f_dat',
-                  '2020-01-02 12:13:14',
-                  expect=datetime.date(2020, 1, 2))
-
-
-@pytest.mark.asyncio
-async def test_date_date(cursor):
-    await _handle(cursor,
-                  'f_dat',
-                  datetime.date(2020, 1, 2))
-
-
-@pytest.mark.asyncio
-async def test_time_time(cursor):
-    await _handle(cursor, 'f_tim', '12:01:02', expect=datetime.time(12, 1, 2))
-
-
-@pytest.mark.asyncio
-async def test_time_delta(cursor):
-    await _handle(cursor,
-                  'f_tim',
-                  '50:01:02',
-                  expect=datetime.timedelta(hours=50, minutes=1, seconds=2))
-
-
-@pytest.mark.asyncio
-async def test_year_string(cursor):
-    await _handle(cursor, 'f_yea', '2020', expect=2020)
-
-
-@pytest.mark.asyncio
-async def test_year_integer(cursor):
-    await _handle(cursor, 'f_yea', 2020)
-
-
-@pytest.mark.asyncio
-async def test_char(cursor):
-    await _handle(cursor, 'g_cha', 'akk')
-
-
-@pytest.mark.asyncio
-async def test_varchar(cursor):
-    await _handle(cursor, 'g_vch', 'akk')
-
-
-@pytest.mark.asyncio
-async def test_binary_ascii(cursor):
-    await _handle(cursor, 'g_bin', 'akk',
-                  expect=b'akk' + b'\x00' * 7)
-
-
-@pytest.mark.asyncio
-async def test_binary_greek(cursor):
-    await _handle(cursor, 'g_bin', 'καλι',
-                  expect=('καλι'.encode() + b'\x00' * 10)[:10])
-
-
-@pytest.mark.asyncio
-async def test_binary(cursor):
-    await _handle(cursor, 'g_bin', b'\x00akk',
-                  expect=b'\x00akk' + b'\x00' * 6)
-
-
-@pytest.mark.asyncio
-async def test_varbinary_ascii(cursor):
-    await _handle(cursor, 'g_vbi', 'akk', expect=b'akk')
-
-
-@pytest.mark.asyncio
-async def test_varbinary_greek(cursor):
-    await _handle(cursor, 'g_vbi', 'καλι', expect='καλι'.encode())
-
-
-@pytest.mark.asyncio
-async def test_varbinary(cursor):
-    await _handle(cursor, 'g_vbi', b'\x00akk')
-
-
-@pytest.mark.asyncio
-async def test_tinyblob_ascii(cursor):
-    await _handle(cursor, 'g_tbl', 'akk', expect=b'akk')
-
-
-@pytest.mark.asyncio
-async def test_tinyblob_greek(cursor):
-    await _handle(cursor, 'g_tbl', 'καλι', expect='καλι'.encode())
-
-
-@pytest.mark.asyncio
-async def test_tinyblob(cursor):
-    await _handle(cursor, 'g_tbl', b'\x00akk')
-
-
-@pytest.mark.asyncio
-async def test_blob_ascii(cursor):
-    await _handle(cursor, 'g_blo', 'akk', expect=b'akk')
-
-
-@pytest.mark.asyncio
-async def test_blob_greek(cursor):
-    await _handle(cursor, 'g_blo', 'καλι', expect='καλι'.encode())
-
-
-@pytest.mark.asyncio
-async def test_blob(cursor):
-    await _handle(cursor, 'g_blo', b'\x00akk')
-
-
-@pytest.mark.asyncio
-async def test_mediumblob_ascii(cursor):
-    await _handle(cursor, 'g_mbl', 'akk', expect=b'akk')
-
-
-@pytest.mark.asyncio
-async def test_mediumblob_greek(cursor):
-    await _handle(cursor, 'g_mbl', 'καλι', expect='καλι'.encode())
-
-
-@pytest.mark.asyncio
-async def test_mediumblob(cursor):
-    await _handle(cursor, 'g_mbl', b'\x00akk')
-
-
-@pytest.mark.asyncio
-async def test_longblob_ascii(cursor):
-    await _handle(cursor, 'g_lbl', 'akk', expect=b'akk')
-
-
-@pytest.mark.asyncio
-async def test_longblob_greek(cursor):
-    await _handle(cursor, 'g_lbl', 'καλι', expect='καλι'.encode())
-
-
-@pytest.mark.asyncio
-async def test_longblob(cursor):
-    await _handle(cursor, 'g_lbl', b'\x00akk')
-
-
-@pytest.mark.asyncio
-async def test_tinytext_ascii(cursor):
-    await _handle(cursor, 'g_tte', 'akk')
-
-
-@pytest.mark.asyncio
-async def test_tinytext_greek(cursor):
-    await _handle(cursor, 'g_tte', 'καλι')
-
-
-@pytest.mark.asyncio
-async def test_tinytext(cursor):
-    await _handle(cursor, 'g_tte', b'\x00akk', expect='\x00akk')
-
-
-@pytest.mark.asyncio
-async def test_text_ascii(cursor):
-    await _handle(cursor, 'g_tex', 'akk')
-
-
-@pytest.mark.asyncio
-async def test_text_greek(cursor):
-    await _handle(cursor, 'g_tex', 'καλι')
-
-
-@pytest.mark.asyncio
-async def test_text(cursor):
-    await _handle(cursor, 'g_tex', b'\x00akk', expect='\x00akk')
-
-
-@pytest.mark.asyncio
-async def test_longtext_ascii(cursor):
-    await _handle(cursor, 'g_lte', 'akk')
-
-
-@pytest.mark.asyncio
-async def test_longtext_greek(cursor):
-    await _handle(cursor, 'g_lte', 'καλι')
-
-
-@pytest.mark.asyncio
-async def test_longtext(cursor):
-    await _handle(cursor, 'g_lte', b'\x00akk', expect='\x00akk')
-
-
-@pytest.mark.asyncio
-async def test_enum(cursor):
-    await _handle(cursor, 'g_enu', 'three')
-
-
-@pytest.mark.asyncio
-async def test_set(cursor):
-    await _handle(cursor, 'g_set', 'one,two')
-
-
-@pytest.mark.asyncio
-async def test_json_dict(cursor):
-    await _handle(cursor, 'h_jso', '{"a": 1}', expect=dict(a=1))
-
-
-@pytest.mark.asyncio
-async def test_json_list(cursor):
-    await _handle(cursor, 'h_jso', '["a", 1]', expect=['a', 1])
+@pytest.mark.parametrize(
+    'column,value,expect', (
+        # decimal
+        ('a_dec', Decimal('123.456'), None),
+        # tinyint
+        ('b_tin', 100.1, 100),
+        ('b_tin', -10, None),
+        # smallint
+        ('b_sma', '100', 100),
+        ('b_sma', 100.1, 100),
+        ('b_sma', -10, None),
+        # mediumint
+        ('b_med', 0, None),
+        ('b_med', 10, None),
+        ('b_med', 100.1, 100),
+        ('b_med', -10, None),
+        # int
+        ('b_int', 0, None),
+        ('b_int', 100.1, 100),
+        ('b_int', -10, None),
+        # bigint
+        ('b_big', 0, None),  # bigint
+        ('b_big', 10, None),
+        ('b_big', 100.1, 100),
+        ('b_big', -10, None),
+        # float
+        ('c_flo', -1, None),
+        ('c_flo', 0.1, None),
+        ('c_flo', -0.1, None),
+        ('c_flo', 123.456, None),
+        ('c_flo', '123.456', 123.456),
+        # double
+        ('d_dou', 0, None),
+        ('d_dou', 1, None),
+        ('d_dou', -1, None),
+        ('d_dou', 0.1, None),
+        ('d_dou', -0.1, None),
+        ('d_dou', 123.456, None),
+        ('d_dou', '123.456', 123.456),
+        # bit
+        ('e_bit', Bit(5)(10), 10),
+        # datetime
+        ('f_dtm', '2020-01-02', datetime.datetime(2020, 1, 2)),
+        ('f_dtm', '2020-01-02 12:13:14',
+         datetime.datetime(2020, 1, 2, 12, 13, 14)),
+        ('f_dtf', datetime.datetime(2020, 1, 2, 12, 13, 14),
+         None),  # datetime(6)
+        ('f_dtf', datetime.datetime(2020, 1, 2, 12, 13, 14, 321), None),
+        # timestamp(6)
+        ('f_tms', '2020-01-02', datetime.datetime(2020, 1, 2)),
+        ('f_tms', '2020-01-02 12:13:14',
+         datetime.datetime(2020, 1, 2, 12, 13, 14)),
+        ('f_tms', datetime.datetime(2020, 1, 2, 12, 13, 14), None),
+        ('f_tms', datetime.datetime(2020, 1, 2, 12, 13, 14, 321), None),
+        # date
+        ('f_dat', '2020-01-02', datetime.date(2020, 1, 2)),
+        ('f_dat', '2020-01-02 12:13:14', datetime.date(2020, 1, 2)),
+        ('f_dat', datetime.date(2020, 1, 2), None),
+        # time
+        ('f_tim', '12:01:02', datetime.time(12, 1, 2)),
+        ('f_tim', '50:01:02',
+         datetime.timedelta(hours=50, minutes=1, seconds=2)),
+        # year
+        ('f_yea', '2020', 2020),
+        ('f_yea', 2020, None),
+        # char(10)
+        ('g_cha', 'akk', None),
+        # varchar(100)
+        ('g_vch', 'akk', None),
+        # binary(10)
+        ('g_bin', 'akk', b'akk' + b'\x00' * 7),
+        ('g_bin', 'καλι', ('καλι'.encode() + b'\x00' * 10)[:10]),
+        ('g_bin', b'\x00akk', b'\x00akk' + b'\x00' * 6),
+        # varbinary(10)
+        ('g_vbi', 'akk', b'akk'),
+        ('g_vbi', 'καλι', 'καλι'.encode()),
+        ('g_vbi', b'\x00akk', None),
+        # tinyblob
+        ('g_tbl', 'akk', b'akk'),
+        ('g_tbl', 'καλι', 'καλι'.encode()),
+        ('g_tbl', b'\x00akk', None),
+        # blob
+        ('g_blo', 'akk', b'akk'),
+        ('g_blo', 'καλι', 'καλι'.encode()),
+        ('g_blo', b'\x00akk', None),
+        # mediumblob
+        ('g_mbl', 'akk', b'akk'),
+        ('g_mbl', 'καλι', 'καλι'.encode()),
+        ('g_mbl', b'\x00akk', None),
+        # longblob
+        ('g_lbl', 'akk', b'akk'),
+        ('g_lbl', 'καλι', 'καλι'.encode()),
+        ('g_lbl', b'\x00akk', None),
+        # tinytext
+        ('g_tte', 'akk', None),
+        ('g_tte', 'καλι', None),
+        ('g_tte', b'\x00akk', '\x00akk'),
+        # text
+        ('g_tex', 'akk', None),
+        ('g_tex', 'καλι', None),
+        ('g_tex', b'\x00akk', '\x00akk'),
+        # longtext
+        ('g_lte', 'akk', None),
+        ('g_lte', 'καλι', None),
+        ('g_lte', b'\x00akk', '\x00akk'),
+        # enum
+        ('g_enu', 'three', None),
+        # set
+        ('g_set', 'one,two', None),
+        # json
+        ('h_jso', '{"a": 1}', dict(a=1)),
+        ('h_jso', '["a", 1]', ['a', 1]),
+
+    )
+)
+def test_column(db_defn, run, column, value, expect):
+    """test a value saved and selected from a column"""
+    run(_handle, db_defn, column, value, expect)

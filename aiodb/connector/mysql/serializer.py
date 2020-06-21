@@ -1,3 +1,4 @@
+"""serialize/deserialize values between python and mysql"""
 import datetime
 import decimal
 import json
@@ -7,6 +8,7 @@ from aiodb.connector.mysql.constants import FIELD_TYPE
 
 
 def to_datetime(value):
+    """parse datetime value"""
     try:
         return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
     except ValueError:
@@ -15,10 +17,12 @@ def to_datetime(value):
 
 
 def to_date(value):
+    """parse date value"""
     return datetime.datetime.strptime(value, '%Y-%m-%d').date()
 
 
 def to_time(value):
+    """parse time value"""
     try:
         time, partial = value.split('.')
         microseconds = int((partial + '0000000')[:6])
@@ -33,6 +37,7 @@ def to_time(value):
 
 
 def bytes_to_int(value):
+    """cast byte value to int"""
     return int.from_bytes(value, 'big')
 
 
@@ -57,18 +62,22 @@ from_mysql = {
 
 
 def quote(val):
+    """quote val"""
     return f"'{val}'"
 
 
 def from_bool(val):
+    """escape a python bool"""
     return quote(int(val))
 
 
 def from_float(val):
+    """escape a python float"""
     return quote('%.15g' % val)
 
 
 def from_string(val):
+    """escape a python string"""
     escape = val.translate(
         str.maketrans({
             "'": "''",
@@ -85,14 +94,17 @@ def from_string(val):
 
 
 def from_bytes(val):
+    """escape a python byte array"""
     return from_string(val.decode('ascii', 'surrogateescape'))
 
 
 def from_date(val):
+    """escape a python datetime.date"""
     return val.strftime("'%Y-%m-%d'")
 
 
 def from_datetime(val):
+    """escape a python datetime.datetime"""
     return val.strftime("'%Y-%m-%d %H:%M:%S.%f'")
 
 
@@ -103,28 +115,33 @@ def _time(hour, minute, second, microsecond):
 
 
 def from_time(val):
+    """escape a python datetime.time"""
     return _time(val.hour, val.minute, val.second, val.microsecond)
 
 
 def from_timedelta(val):
+    """escape a python datetime.timedelta"""
     sec = int(val.total_seconds())
-    h = sec // 3600
+    hour = sec // 3600
     sec = sec % 3600
-    m = sec // 60
-    s = sec % 60
-    ms = val.microseconds
-    return _time(h, m, s, ms)
+    mns = sec // 60
+    sec = sec % 60
+    msec = val.microseconds
+    return _time(hour, mns, sec, msec)
 
 
 def from_bit(val):
+    """escape a aiodb.connector.mysql.Bit"""
     return f"b'{val.as_binary()}'"
 
 
 def from_set(val):
+    """escape a python set"""
     return from_string(','.join([str(item) for item in val]))
 
 
 def to_mysql(val):
+    """prepare val for use in sql statement"""
     if val is None:
         return 'NULL'
 
