@@ -86,6 +86,15 @@ class Date:  # pylint: disable=too-few-public-methods
         return datetime.datetime.strptime(value, '%Y-%m-%d').date()
 
 
+def to_datetime(value):
+    """cast string value to datetime.datetime"""
+    try:
+        return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
+    except ValueError:
+        pass
+    return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+
+
 class Datetime:  # pylint: disable=too-few-public-methods
     """represent a datetime"""
 
@@ -98,11 +107,23 @@ class Datetime:  # pylint: disable=too-few-public-methods
             return value
         if isinstance(value, datetime.date):
             return datetime.datetime(value.year, value.month, value.day)
-        try:
-            return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
-        except ValueError:
-            pass
-        return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+        return to_datetime(value)
+
+
+def to_time(value):
+    """cast time string to datetime.timedelta"""
+    value = str(value)
+    try:
+        time, partial = value.split('.')
+        microseconds = int((partial + '0000000')[:6])
+    except ValueError:
+        time = value
+        microseconds = 0
+    hours, minutes, seconds = (int(t) for t in time.split(':'))
+    if hours <= 24:
+        return datetime.time(hours, minutes, seconds, microseconds)
+    return datetime.timedelta(hours=hours, minutes=minutes,
+                              seconds=seconds, microseconds=microseconds)
 
 
 class Time:  # pylint: disable=too-few-public-methods
@@ -117,15 +138,4 @@ class Time:  # pylint: disable=too-few-public-methods
             return value
         if isinstance(value, datetime.timedelta):
             return value
-        value = str(value)
-        try:
-            time, partial = value.split('.')
-            microseconds = int((partial + '0000000')[:6])
-        except ValueError:
-            time = value
-            microseconds = 0
-        hours, minutes, seconds = (int(t) for t in time.split(':'))
-        if hours <= 24:
-            return datetime.time(hours, minutes, seconds, microseconds)
-        return datetime.timedelta(hours=hours, minutes=minutes,
-                                  seconds=seconds, microseconds=microseconds)
+        return to_time(value)

@@ -5,35 +5,12 @@ import json
 
 from aiodb.connector.mysql.bit import Bit
 from aiodb.connector.mysql.constants import FIELD_TYPE
-
-
-def to_datetime(value):
-    """parse datetime value"""
-    try:
-        return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
-    except ValueError:
-        pass
-    return datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+from aiodb.model.types import to_datetime, to_time
 
 
 def to_date(value):
     """parse date value"""
     return datetime.datetime.strptime(value, '%Y-%m-%d').date()
-
-
-def to_time(value):
-    """parse time value"""
-    try:
-        time, partial = value.split('.')
-        microseconds = int((partial + '0000000')[:6])
-    except ValueError:
-        time = value
-        microseconds = 0
-    hours, minutes, seconds = (int(t) for t in time.split(':'))
-    if hours <= 24:
-        return datetime.time(hours, minutes, seconds, microseconds)
-    return datetime.timedelta(hours=hours, minutes=minutes,
-                              seconds=seconds, microseconds=microseconds)
 
 
 def bytes_to_int(value):
