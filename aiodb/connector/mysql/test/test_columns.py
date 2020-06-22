@@ -91,8 +91,10 @@ async def _handle(db_defn, column, value, expect=None):
         ('f_yea', 2020, None),
         # char(10)
         ('g_cha', 'akk', None),
+        ('g_cha', 'καλι', None),
         # varchar(100)
         ('g_vch', 'akk', None),
+        ('g_vch', 'καλι', None),
         # binary(10)
         ('g_bin', 'akk', b'akk' + b'\x00' * 7),
         ('g_bin', 'καλι', ('καλι'.encode() + b'\x00' * 10)[:10]),
