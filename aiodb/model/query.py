@@ -98,8 +98,8 @@ class Query:
 
         return self
 
-    def _build(self,  # pylint: disable=too-many-arguments
-               one, limit, offset, for_update, quote):
+    def _pre_execute(self,  # pylint: disable=too-many-arguments
+                     one, limit, offset, for_update, quote):
         if one and limit:
             raise Exception('one and limit parameters are mutually exclusive')
         if one:
@@ -136,8 +136,11 @@ class Query:
                       offset=None, for_update=False):
         """execute query against database"""
 
-        stmt = self._build(one, limit, offset, for_update, cursor.quote)
+        stmt = self._pre_execute(one, limit, offset, for_update, cursor.quote)
         columns, values = await cursor.execute(stmt, args)
+        return self._post_execute(columns, values, one)
+
+    def _post_execute(self, columns, values, one):
         columns = [col.split('_', 1)[1] for col in columns]
 
         rows = []
@@ -152,7 +155,7 @@ class Query:
                     obj = table.cls(**val)
                 if tables is None:
                     primary_table = obj
-                    obj.tables = tables = {}
+                    obj._tables = tables = {}
                 else:
                     tables[table.alias] = obj
                 row = row[table.column_count:]
@@ -162,6 +165,22 @@ class Query:
             rows = rows[0] if rows else None
 
         return rows
+
+
+class SyncQuery:
+
+    @classmethod
+    def patch(cls):
+        """replace all async methods in Query class"""
+        Query.execute = cls.execute
+
+    def execute(self,  # pylint: disable=too-many-arguments
+                cursor, args=None, one=False, limit=None,
+                offset=None, for_update=False):
+        """execute query against database"""
+        stmt = self._pre_execute(one, limit, offset, for_update, cursor.quote)
+        columns, values = cursor.execute(stmt, args)
+        return self._post_execute(columns, values, one)
 
 
 class QueryTable:  # pylint: disable=too-many-instance-attributes
