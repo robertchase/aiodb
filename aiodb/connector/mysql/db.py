@@ -1,10 +1,12 @@
 """mysql connector"""
 import asyncio
 import logging
+import socket
 
 from fsm.parser import Parser as parser
 
 from aiodb import Cursor
+from aiodb.model import sync as to_sync
 from .serializer import to_mysql
 
 
@@ -18,7 +20,7 @@ class DB:  # pylint: disable=too-few-public-methods
     def __init__(self,  # pylint: disable=too-many-arguments
                  host='mysql', port=3306, user='', password='',
                  database=None, autocommit=None, isolation=None, debug=False,
-                 commit=True):
+                 commit=True, sync=False):
         self.host = host
         self.port = int(port)
         self.user = user
@@ -30,6 +32,12 @@ class DB:  # pylint: disable=too-few-public-methods
         self.isolation = isolation
         self.debug = debug
         self.commit = commit
+        self.sync = sync
+
+        if sync:
+            self.cursor = self.sync_cursor
+            SyncMysqlHandler.patch()
+            to_sync.patch()
 
         self.packet = parser.parse('aiodb.connector.mysql.packet.fsm')
         self.connection = parser.parse('aiodb.connector.mysql.connection.fsm')
@@ -37,6 +45,10 @@ class DB:  # pylint: disable=too-few-public-methods
     async def cursor(self):
         """return mysql connection"""
         return await MysqlHandler(self).connect(self.host, self.port)
+
+    def sync_cursor(self):
+        """return sync mysql connection"""
+        return MysqlHandler(self).connect(self.host, self.port)
 
 
 def trace(state, event, dflt, is_internal):
@@ -132,3 +144,52 @@ class MysqlHandler:
     def is_connected(self):
         """return True if connected to database"""
         return self.fsm.context.is_connected
+
+
+class SyncMysqlHandler(MysqlHandler):
+    """methods to convert MysqlHandler to sync"""
+
+    @classmethod
+    def patch(cls):
+        """replace all async methods in MysqlHandler class"""
+        MysqlHandler.connect = cls.connect
+        MysqlHandler.close = cls.close
+        MysqlHandler.send = cls.send
+        MysqlHandler.read = cls.read
+        MysqlHandler.execute = cls.execute
+
+    def connect(self, host, port):
+        """connect to database"""
+        self.sock = socket.create_connection((host, port))
+        while not self.is_connected:
+            self.read()
+        return self.cursor
+
+    def close(self):
+        """close the database connection"""
+        self.sock.close()
+
+    def send(self, data):
+        """send data to database"""
+        self.sock.sendall(data)
+
+    def read(self, length=1000):
+        """read up to 1000 bytes from the database"""
+        data = self.sock.recv(length)
+        self.packet_fsm.handle('data', data)
+
+    def execute(self, query,
+                **kwargs):  # pylint: disable=unused-argument
+        """send query to database and wait for response"""
+        cur = self.cursor
+        ctx = self.fsm.context
+
+        self.fsm.handle('query', query)  # start query running
+
+        while ctx.is_running:  # while query is running
+            self.read()
+
+        cur.last_id = ctx.last_id
+        cur.message = ctx.message
+
+        return ctx.result_set

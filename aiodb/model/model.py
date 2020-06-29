@@ -1,10 +1,12 @@
 """Object Relational Model"""
+from collections import namedtuple
+
 from aiodb.model.cursor import Raw
 from aiodb.model.field import Field
 from aiodb.model.query import Query
 
 
-__reserved__ = ('as_dict', 'delete', 'load', 'save')
+__reserved__ = ('as_dict', 'delete', 'load', 'load_sync', 'save')
 
 
 class RequiredAttributeError(AttributeError):
@@ -28,8 +30,12 @@ def quote(name):
     return '{Q}' + name + '{Q}'
 
 
+PreSave = namedtuple('PreSave', 'stmt, args, new, key, fields', defaults=(
+    None, None, False, None, None))
+
+
 class Model:
-    """Base Model"""
+    """base orm"""
 
     __TABLENAME__ = None
 
@@ -47,7 +53,8 @@ class Model:
 
     def __repr__(self):
         result = f'{self._class.__name__}('
-        if self._primary and getattr(self, self._primary().name):
+        # TODO: walrus?
+        if self._primary() and getattr(self, self._primary().name):
             val = getattr(self, self._primary().name)
             result += f'primary_key={val}'
         else:
@@ -157,11 +164,82 @@ class Model:
         return Query(cls)
 
     @classmethod
+    def _pre_load(cls):
+        return Query(cls).where(f'{quote(cls._primary().name)}=%s')
+
+    @classmethod
     async def load(cls, cursor, key):
         """Load a database row by primary key.
         """
-        query = Query(cls).where(f'{quote(cls._primary().name)}=%s')
+        query = cls._pre_load()
         return await query.execute(cursor, key, one=True)
+
+    @classmethod
+    def load_sync(cls, cursor, key):
+        """Load a database row by primary key (sync mode).
+        """
+        query = cls._pre_load()
+        return query.execute(cursor, key, one=True)
+
+    def _pre_save(self, cursor, insert=False):
+        key = self._primary()
+        self._updated = []  # pylint: disable=attribute-defined-outside-init
+        cursor.last_id = None
+        cursor.query = None
+        cursor.query_after = None
+        if insert or key is None or getattr(self, key.name) is None:
+            new = True
+            fields = self._db_insert() if insert else self._db_update()
+            fields = [
+                f
+                for f in fields
+                if not (f.is_nullable and getattr(self, f.name) is None)
+            ]
+            field_names = [
+                f.column
+                for f in fields
+            ]
+            stmt = ' '.join((
+                'INSERT INTO',
+                quote(self.__TABLENAME__),
+                '(',
+                ','.join(quote(f) for f in field_names),
+                ') VALUES (',
+                ','.join('%s' for n in range(len(field_names))),
+                ')',
+            ))
+            args = [getattr(self, f.name) for f in fields]
+        else:
+            if not getattr(self, key.name):
+                raise Exception('Model UPDATE requires a primary key')
+            new = False
+            fields = self._fields_to_update
+            if fields is None:
+                return PreSave()
+            stmt = ' '.join((
+                'UPDATE ',
+                quote(self.__TABLENAME__),
+                'SET',
+                ','.join([f'{quote(fld.column)}=%s' for fld in fields]),
+                'WHERE ',
+                f'{quote(key.name)}=%s'
+            ))
+            args = [getattr(self, fld.name) for fld in fields]
+            args.append(getattr(self, key.name))
+
+        stmt = stmt.format(Q=cursor.quote)
+        return PreSave(stmt, args, new, key, fields)
+
+    def _post_save(self, cursor, insert, pre_result):
+        self._cache_field_values()
+        if pre_result.new:
+            if not insert and pre_result.key:
+                setattr(self, pre_result.key.name, cursor.last_id)
+        else:
+            self._updated = [  # pylint: disable=attribute-defined-outside-init
+                field.name for field in pre_result.fields]
+
+        return self
 
     async def save(self, cursor, insert=False):
         """Save object by primary key
@@ -182,59 +260,16 @@ class Model:
 
                2. This call will not change expression Fields.
         """
-        key = self._primary()
-        self._updated = []  # pylint: disable=attribute-defined-outside-init
-        cursor.last_id = None
-        cursor.query = None
-        cursor.query_after = None
-        if insert or key is None or getattr(self, key.name) is None:
-            new = True
-            fields = self._db_insert() if insert else self._db_update()
-            fields = [
-                f.column
-                for f in fields
-                if not (f.is_nullable and getattr(self, f.name) is None)
-            ]
-            stmt = ' '.join((
-                'INSERT INTO',
-                quote(self.__TABLENAME__),
-                '(',
-                ','.join(quote(f) for f in fields),
-                ') VALUES (',
-                ','.join('%s' for n in range(len(fields))),
-                ')',
-            ))
-            args = [getattr(self, f) for f in fields]
-        else:
-            if not getattr(self, key.name):
-                raise Exception('Model UPDATE requires a primary key')
-            new = False
-            fields = self._fields_to_update
-            if fields is None:
-                return self
-            stmt = ' '.join((
-                'UPDATE ',
-                quote(self.__TABLENAME__),
-                'SET',
-                ','.join([f'{quote(fld.column)}=%s' for fld in fields]),
-                'WHERE ',
-                f'{quote(key.name)}=%s'
-            ))
-            args = [getattr(self, fld.name) for fld in fields]
-            args.append(getattr(self, key.name))
-
-        stmt = stmt.format(Q=cursor.quote)
-        await cursor.execute(stmt, args, is_insert=new, pk=key.name)
-
-        self._cache_field_values()
-        if new:
-            if not insert and key:
-                setattr(self, key.name, cursor.last_id)
-        else:
-            self._updated = [  # pylint: disable=attribute-defined-outside-init
-                field.name for field in fields]
-
+        result = self._pre_save(cursor, insert)
+        if result.fields:
+            await cursor.execute(result.stmt, result.args,
+                                 is_insert=result.new, pk=result.key.name)
+            self._post_save(cursor, insert, result)
         return self
+
+    def _pre_insert(self, key):
+        if key is not None:
+            setattr(self, self._primary().name, key)
 
     async def insert(self, cursor, key=None):
         """Insert object
@@ -247,16 +282,18 @@ class Model:
 
            Returns self.
         """
-        if key is not None:
-            setattr(self, self._primary().name, key)
+        self._pre_insert(key)
         return await self.save(cursor, insert=True)
+
+    def _pre_delete(self, cursor):
+        stmt = f'DELETE FROM {quote(self.__TABLENAME__)}' + \
+            f' WHERE {quote(self._primary().name)}=%s'
+        return stmt.format(Q=cursor.quote)
 
     async def delete(self, cursor):
         """Delete matching row from database by primary key.
         """
-        stmt = f'DELETE FROM {quote(self.__TABLENAME__)}' + \
-            f' WHERE {quote(self._primary().name)}=%s'
-        stmt = stmt.format(Q=cursor.quote)
+        stmt = self._pre_delete(cursor)
         await cursor.execute(stmt, getattr(self, self._primary().name))
 
     def _cache_field_values(self):
@@ -275,3 +312,35 @@ class Model:
         if len(fields) == 0:
             return None
         return fields
+
+
+class SyncModel:
+
+    @classmethod
+    def _patch(cls):
+        """replace all async methods in Model class"""
+        Model.save = cls._save_sync
+        Model.insert = cls._insert_sync
+        Model.delete = cls._delete_sync
+
+    def _save_sync(self, cursor, insert=False):
+        """Save object by primary key
+        """
+        result = self._pre_save(cursor, insert)
+        if result.fields:
+            cursor.execute(result.stmt, result.args,
+                           is_insert=result.new, pk=result.key.name)
+            self._post_save(cursor, insert, result)
+        return self
+
+    def _insert_sync(self, cursor, key=None):
+        """Insert object
+        """
+        self._pre_insert(key)
+        return self.save(cursor, insert=True)
+
+    def _delete_sync(self, cursor):
+        """Delete matching row from database by primary key.
+        """
+        stmt = self._pre_delete(cursor)
+        cursor.execute(stmt, getattr(self, self._primary().name))

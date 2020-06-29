@@ -101,22 +101,7 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
         self._transaction_depth = 0
         await self._transaction('ROLLBACK')
 
-    async def execute(self, query, args=None, **kwargs):
-        """Execute an arbitrary SQL command
-
-           The query is a string with %s subsitiutions which are replaced
-           with args after they have been converted and escaped. After
-           substitution, the query is passed to the database-specific
-           execute function specified in __init__.
-
-           Parameters:
-               query  - query string (with %s substitutions)
-               args   - substitution parameters
-               kwargs - database specific
-
-          Result:
-              Same as result of execute function specified in __init__.
-        """
+    def _pre_execute(self, query, args=None, **kwargs):
         self.query = query
         self.query_after = None
 
@@ -133,6 +118,25 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
             query = query % args
 
         self.query_after = query
+        return query
+
+    async def execute(self, query, args=None, **kwargs):
+        """Execute an arbitrary SQL command
+
+           The query is a string with %s subsitiutions which are replaced
+           with args after they have been converted and escaped. After
+           substitution, the query is passed to the database-specific
+           execute function specified in __init__.
+
+           Parameters:
+               query  - query string (with %s substitutions)
+               args   - substitution parameters
+               kwargs - database specific
+
+          Result:
+              Same as result of execute function specified in __init__.
+        """
+        query = self._pre_execute(query, args)
         return await self._execute(query, **kwargs)
 
     async def select(self, query, args=None, one=False):
@@ -157,6 +161,10 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
                     query 'AS' clause, or the value used to indicate the
                     select_expr
         """
+        columns, rows = await self.execute(query, args=args)
+        return self._post_select(columns, rows, one)
+
+    def _post_select(self, columns, rows, one):
         class Row:
             """represent a row of a resultset"""
 
@@ -169,9 +177,57 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
             def __repr__(self):
                 return str(self.__dict__)
 
-        columns, rows = await self.execute(query, args=args)
         if rows:
             result = [Row(**(dict(zip(columns, row)))) for row in rows]
             if one and result:
                 return result[0]
             return result
+
+
+class SyncCursor:
+    """methods to convert Cursor to sync"""
+
+    @classmethod
+    def patch(cls):
+        """replace all async methods in Cursor class"""
+        Cursor._transaction = cls._transaction
+        Cursor.start_transaction = cls.start_transaction
+        Cursor.commit = cls.commit
+        Cursor.rollback = cls.rollback
+        Cursor.execute = cls.execute
+        Cursor.select = cls.select
+
+    def _transaction(self, command):
+        if self._has_transactions:
+            self.execute(command)
+
+    def start_transaction(self):
+        """Start database transaction"""
+        self._transaction_depth += 1
+        if self._transaction_depth == 1:
+            self._transaction('BEGIN')
+
+    def commit(self):
+        """Commit database transaction"""
+        if self._transaction_depth == 0:
+            return
+        self._transaction_depth -= 1
+        if self._transaction_depth == 0:
+            self._transaction('COMMIT')
+
+    def rollback(self):
+        """Rollback database transaction"""
+        if self._transaction_depth == 0:
+            return
+        self._transaction_depth = 0
+        self._transaction('ROLLBACK')
+
+    def execute(self, query, args=None, **kwargs):
+        """Execute an arbitrary SQL command"""
+        query = self._pre_execute(query, args)
+        return self._execute(query, **kwargs)
+
+    def select(self, query, args=None, one=False):
+        """Run an arbitrary select statement"""
+        columns, rows = self.execute(query, args=args)
+        return self._post_select(columns, rows, one)
