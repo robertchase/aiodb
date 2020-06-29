@@ -166,17 +166,14 @@ class Query:
 
         return rows
 
-
-class SyncQuery:
-
     @classmethod
     def patch(cls):
         """replace all async methods in Query class"""
-        Query.execute = cls.execute
+        cls.execute = cls.execute_sync
 
-    def execute(self,  # pylint: disable=too-many-arguments
-                cursor, args=None, one=False, limit=None,
-                offset=None, for_update=False):
+    def execute_sync(self,  # pylint: disable=too-many-arguments
+                     cursor, args=None, one=False, limit=None,
+                     offset=None, for_update=False):
         """execute query against database"""
         stmt = self._pre_execute(one, limit, offset, for_update, cursor.quote)
         columns, values = cursor.execute(stmt, args)

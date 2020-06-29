@@ -1,4 +1,5 @@
 """mysql connector"""
+# pylint: disable=invalid-overridden-method
 import asyncio
 import logging
 import socket
@@ -42,7 +43,7 @@ class DB:  # pylint: disable=too-few-public-methods
         self.packet = parser.parse('aiodb.connector.mysql.packet.fsm')
         self.connection = parser.parse('aiodb.connector.mysql.connection.fsm')
 
-    async def cursor(self):
+    async def cursor(self):  # pylint: disable=method-hidden
         """return mysql connection"""
         return await MysqlHandler(self).connect(self.host, self.port)
 
@@ -160,7 +161,7 @@ class SyncMysqlHandler(MysqlHandler):
 
     def connect(self, host, port):
         """connect to database"""
-        self.sock = socket.create_connection((host, port))
+        self.sock = socket.create_connection((host, port))  # pylint: disable=attribute-defined-outside-init
         while not self.is_connected:
             self.read()
         return self.cursor
@@ -180,6 +181,7 @@ class SyncMysqlHandler(MysqlHandler):
 
     def execute(self, query,
                 **kwargs):  # pylint: disable=unused-argument
+                            # pylint: disable=invalid-overridden-method
         """send query to database and wait for response"""
         cur = self.cursor
         ctx = self.fsm.context

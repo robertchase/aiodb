@@ -313,15 +313,12 @@ class Model:
             return None
         return fields
 
-
-class SyncModel:
-
     @classmethod
     def _patch(cls):
         """replace all async methods in Model class"""
-        Model.save = cls._save_sync
-        Model.insert = cls._insert_sync
-        Model.delete = cls._delete_sync
+        cls.save = cls._save_sync
+        cls.insert = cls._insert_sync
+        cls.delete = cls._delete_sync
 
     def _save_sync(self, cursor, insert=False):
         """Save object by primary key

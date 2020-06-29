@@ -101,7 +101,8 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
         self._transaction_depth = 0
         await self._transaction('ROLLBACK')
 
-    def _pre_execute(self, query, args=None, **kwargs):
+    def _pre_execute(self, query, args=None,
+                     **kwargs):  # pylint: disable=unused-argument
         self.query = query
         self.query_after = None
 
@@ -183,31 +184,27 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
                 return result[0]
             return result
 
-
-class SyncCursor:
-    """methods to convert Cursor to sync"""
-
     @classmethod
     def patch(cls):
         """replace all async methods in Cursor class"""
-        Cursor._transaction = cls._transaction
-        Cursor.start_transaction = cls.start_transaction
-        Cursor.commit = cls.commit
-        Cursor.rollback = cls.rollback
-        Cursor.execute = cls.execute
-        Cursor.select = cls.select
+        cls._transaction = cls._transaction_sync
+        cls.start_transaction = cls.start_transaction_sync
+        cls.commit = cls.commit_sync
+        cls.rollback = cls.rollback_sync
+        cls.execute = cls.execute_sync
+        cls.select = cls.select_sync
 
-    def _transaction(self, command):
+    def _transaction_sync(self, command):
         if self._has_transactions:
             self.execute(command)
 
-    def start_transaction(self):
+    def start_transaction_sync(self):
         """Start database transaction"""
         self._transaction_depth += 1
         if self._transaction_depth == 1:
             self._transaction('BEGIN')
 
-    def commit(self):
+    def commit_sync(self):
         """Commit database transaction"""
         if self._transaction_depth == 0:
             return
@@ -215,19 +212,19 @@ class SyncCursor:
         if self._transaction_depth == 0:
             self._transaction('COMMIT')
 
-    def rollback(self):
+    def rollback_sync(self):
         """Rollback database transaction"""
         if self._transaction_depth == 0:
             return
         self._transaction_depth = 0
         self._transaction('ROLLBACK')
 
-    def execute(self, query, args=None, **kwargs):
+    def execute_sync(self, query, args=None, **kwargs):
         """Execute an arbitrary SQL command"""
         query = self._pre_execute(query, args)
         return self._execute(query, **kwargs)
 
-    def select(self, query, args=None, one=False):
+    def select_sync(self, query, args=None, one=False):
         """Run an arbitrary select statement"""
         columns, rows = self.execute(query, args=args)
         return self._post_select(columns, rows, one)
