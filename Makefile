@@ -4,7 +4,7 @@ ifeq ($(GIT),)
   GIT := $(HOME)/git
 endif
 
-IMAGE := base-python
+IMAGE := base-python-sql
 
 NET := --net test
 MOUNT := /opt/git
