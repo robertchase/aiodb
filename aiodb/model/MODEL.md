@@ -37,6 +37,8 @@ class Employee(Model):
     start_date = Field(Date)
 ```
 
+#### create
+
 The model maps three fields, `id`, `name` and `start_date`.
 Here is how a new `Employee` is created:
 
@@ -49,6 +51,8 @@ print(employee.start_date)
 print(employee.as_dict())
 >>> {'id': None, 'name': 'Fred', 'start_date' = datetime.date(2020, 1, 1)}
 ```
+
+#### insert
 
 The new `employee` instance only exists in python&mdash;there is
 nothing in the database yet.
@@ -68,7 +72,8 @@ What happened? The `save` method determined that since
 `employee` didn't have a primary key value,
 an `INSERT` would have to be performed.
 The `SQL` statement can be examined by inspecting the `cursor`'s
-`query` and `query_after` attributes:
+`query` and `query_after` attributes, which hold the most recent
+operation performed against the database:
 
 ```
 print(cursor.query)
@@ -76,3 +81,23 @@ INSERT INTO `employee` ( `name`,`start_date` ) VALUES ( %s,%s )
 print(cursor.query_after)
 INSERT INTO `employee` ( `name`,`start_date` ) VALUES ( 'Fred','2020-01-01' )
 ```
+
+#### update
+
+If `employee` is changed:
+
+```
+employee.name = 'Fred Mercury'
+```
+
+then `save` will detect the change, and perform an `UPDATE`:
+
+```
+employee.save(cursor)
+cursor.query
+>>> 'UPDATE  `employee` SET `name`=%s WHERE  `id`=%s'
+```
+
+Only the changed field, `name`, is part of the `UPDATE`.
+If no fields are changed, then there is no interaction with the database.
+All of this is managed by the `Model`.
