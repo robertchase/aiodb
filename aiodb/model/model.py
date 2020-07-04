@@ -53,9 +53,7 @@ class Model:
 
     def __repr__(self):
         result = f'{self._class().__name__}('
-        # TODO: walrus?
-        if self._primary() and getattr(self, self._primary().name):
-            val = getattr(self, self._primary().name)
+        if self._primary() and (val := getattr(self, self._primary().name)):
             result += f'primary_key={val}'
         else:
             result += f'object_id={id(self)}'

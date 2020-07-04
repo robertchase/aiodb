@@ -10,7 +10,7 @@ Simple operations like:
 2. saving a new or modified instance to the database
 3. loading an instance from a database row
 
-are easy to do.
+are easy to do with standard looking python syntax.
 Even queries that involve joining tables by
 primary and foreign keys are easy.
 
@@ -43,13 +43,13 @@ The model maps three fields, `id`, `name` and `start_date`.
 Here is how a new `Employee` is created:
 
 ```
-employee = Employee(name='Fred', start_date='2020-01-01')
-print(employee.name)
->>> Fred
-print(employee.start_date)
->>> 2020-01-01
-print(employee.as_dict())
->>> {'id': None, 'name': 'Fred', 'start_date' = datetime.date(2020, 1, 1)}
+>>> employee = Employee(name='Fred', start_date='2020-01-01')
+>>> print(employee.name)
+Fred
+>>> print(employee.start_date)
+datetime.date(2020, 1, 1)
+>>> print(employee.as_dict())
+{'id': None, 'name': 'Fred', 'start_date' = datetime.date(2020, 1, 1)}
 ```
 
 #### insert
@@ -60,9 +60,9 @@ Using a connection to the database, called a `cursor`,
 the `employee` can be saved:
 
 ```
-employee.save(cursor)
-print(employee.as_dict())
->>> {'id': 123, 'name': 'Fred', 'start_date' = datetime.date(2020, 1, 1)}
+>>> employee.save(cursor)
+>>> print(employee.as_dict())
+{'id': 123, 'name': 'Fred', 'start_date' = datetime.date(2020, 1, 1)}
 ```
 
 Now the `employee` instance is saved and has
@@ -76,9 +76,9 @@ The `SQL` statement can be examined by inspecting the `cursor`'s
 operation performed against the database:
 
 ```
-print(cursor.query)
+>>> print(cursor.query)
 INSERT INTO `employee` ( `name`,`start_date` ) VALUES ( %s,%s )
-print(cursor.query_after)
+>>> print(cursor.query_after)
 INSERT INTO `employee` ( `name`,`start_date` ) VALUES ( 'Fred','2020-01-01' )
 ```
 
@@ -93,11 +93,64 @@ employee.name = 'Fred Mercury'
 then `save` will detect the change, and perform an `UPDATE`:
 
 ```
-employee.save(cursor)
-cursor.query
->>> 'UPDATE  `employee` SET `name`=%s WHERE  `id`=%s'
+>>> employee.save(cursor)
+>>> cursor.query
+'UPDATE  `employee` SET `name`=%s WHERE  `id`=%s'
 ```
 
 Only the changed field, `name`, is part of the `UPDATE`.
 If no fields are changed, then there is no interaction with the database.
 All of this is managed by the `Model`.
+
+## Model Methods
+
+#### `__init__`
+
+The default constructor for a `Model` accepts keyword arguments
+for each defined `Field`.
+Required fields are enforced; otherwise, defaults are assigned.
+
+If you define your own constructor, be sure to use `super`.
+
+#### save - `await save(cursor, insert=True)`
+
+The `save` method saves any changes in the `Model` to the database
+referenced by `cursor`.
+If the `Model` doesn't have a value for the primary key,
+then an `INSERT` is performed; otherwise, an `UPDATE` is performed.
+
+To force `INSERT` even if the primary key has a value,
+set `insert` to `True`.
+
+When an `INSERT` happens, if the database is responsible for
+generating the primary key, then that new primary key is stored in the
+primary key attribute of the `Model`.
+
+When an `UPDATE` happens, only the changed fields will be
+part of the `UPDATE`.
+If nothing is changed, then an `UPDATE` is not executed.
+After the `save` completes,
+the names of the updated fields are provided
+in the instance attribute `_updated`.
+
+When the `cursor` is in `sync` mode,
+then the `save` method cannot be called with `await`.
+
+#### load - `await load(cursor, primary_key)`
+
+The `load` method creates a single instance of `Model` from the database
+referenced by `cursor`, by doing a `SELECT` by primary key.
+
+#### load_sync - `load(cursor, primary_key)`
+
+Use `load_sync` instead of `load` when the `cursor` is in `sync` mode.
+
+#### delete
+
+The `delete` method deletes a single row from the database
+referenced by `cursor`, by doing a `DELETE` by primary key.
+
+When the `cursor` is in `sync` mode,
+then the `delete` method cannot be called with `await`.
+
+#### query

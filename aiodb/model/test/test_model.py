@@ -126,3 +126,12 @@ def test_db_update():
     """verify _db_update"""
     test = FieldTest(a=0, b=0, c=0, d=0)
     assert sorted(f.name for f in test._db_update()) == ['b']
+
+
+def test_repr():
+    """test __repr__ operation"""
+
+    class Test(Model):
+        id = Field(is_primary=True)
+
+    assert str(Test(id=10)) == 'Test(primary_key=10)'
