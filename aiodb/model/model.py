@@ -140,7 +140,6 @@ class Model:
             except KeyError:
                 pass
             raise
-        value = object.__getattribute__(self, name)
         if name in ('_primary',):
             return value
         if isinstance(value, Field):
