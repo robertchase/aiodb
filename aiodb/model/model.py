@@ -129,6 +129,17 @@ class Model:
         return self._tables[name]
 
     def __getattribute__(self, name):
+        try:
+            value = object.__getattribute__(self, name)
+        except AttributeError:
+            try:
+                # dot notation access for joined tables
+                return object.__getattribute__(self, '_tables')[name]
+            except AttributeError:
+                pass
+            except KeyError:
+                pass
+            raise
         value = object.__getattribute__(self, name)
         if name in ('_primary',):
             return value

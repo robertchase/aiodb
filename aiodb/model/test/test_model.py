@@ -132,6 +132,33 @@ def test_repr():
     """test __repr__ operation"""
 
     class Test(Model):
+        """simple model with a primary key"""
         id = Field(is_primary=True)
 
     assert str(Test(id=10)) == 'Test(primary_key=10)'
+
+
+class JoinedModel(Model):
+    """fake model that looks like it as a joined table"""
+
+    def __init__(self):
+        super().__init__()
+        self._tables = {'a': 'one'}
+
+
+def test_join_lookup_bracket():
+    """find joined table using bracket notation"""
+
+    model = JoinedModel()
+    assert model['a'] == 'one'
+    with pytest.raises(KeyError):
+        assert model['b'] == 'one'
+
+
+def test_join_lookup_dot():
+    """find joined table using dot notation"""
+
+    model = JoinedModel()
+    assert model.a == 'one'
+    with pytest.raises(AttributeError):
+        assert model.b == 'one'
