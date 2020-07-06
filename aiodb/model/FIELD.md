@@ -37,6 +37,21 @@ The default `type` is `aiodb.String`.
 A `String` field is used for any column that holds
 a non-binary character value.
 
+#### CHAR(n) `aiodb.CHAR`
+
+A `CHAR` field is used for any column that holds a `String`
+value with a maximum length.
+A `CHAR` field will not accept a value that exceeds the maximum length.
+
+The length is specified during `Field` definition.
+Here is an example of a `name` field being specified
+as a `CHAR` of up to 100 characters:
+
+```
+    class MyTable(Model):
+        name = Field(CHAR(100))
+```
+
 #### Integer `aiodb.Integer`
 
 An `Integer` field is used for any column that holds
