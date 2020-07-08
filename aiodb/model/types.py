@@ -2,7 +2,7 @@
 import datetime
 
 
-def CHAR(length, is_strict=False):  # pylint: disable=invalid-name
+def Char(length, is_strict=True):  # pylint: disable=invalid-name
     """represent a char string"""
 
     class _char:  # pylint: disable=too-few-public-methods
@@ -16,6 +16,22 @@ def CHAR(length, is_strict=False):  # pylint: disable=invalid-name
             return (value + ' ' * length)[:length]
 
     return _char
+
+
+def Enum(*args):  # pylint: disable=invalid-name
+    """represent an enum"""
+
+    class _enum:  # pylint: disable=too-few-public-methods
+
+        @classmethod
+        def parse(cls, value):
+            """normalize an enum"""
+            value = String.parse(value)
+            if value not in args:
+                raise ValueError('invalid enum')
+            return value
+
+    return _enum
 
 
 class Binary:  # pylint: disable=too-few-public-methods

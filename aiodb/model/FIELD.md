@@ -37,19 +37,34 @@ The default `type` is `aiodb.String`.
 A `String` field is used for any column that holds
 a non-binary character value.
 
-#### CHAR(n) `aiodb.CHAR`
+#### Char(length, strict=True) `aiodb.Char`
 
-A `CHAR` field is used for any column that holds a `String`
+A `Char` field is used for any column that holds a `String`
 value with a maximum length.
-A `CHAR` field will not accept a value that exceeds the maximum length.
+If `strict` is `True`,
+a `Char` field will not accept a value that exceeds the maximum length;
+otherwise, the value will be truncated to the maximum length.
 
 The length is specified during `Field` definition.
 Here is an example of a `name` field being specified
-as a `CHAR` of up to 100 characters:
+as a `Char` of up to 100 characters:
 
 ```
     class MyTable(Model):
-        name = Field(CHAR(100))
+        name = Field(Char(100))
+```
+
+#### Enum(e1, e2, ...) `aiodb.Enum`
+
+An `Enum` field is used for any column that holds an Enum value.
+An `Enum` field type is specified with a list of acceptable values.
+
+Here is an example of a `status` field being specified
+as an `Enum`:
+
+```
+    class MyTable(Model):
+        status = Field(Enum('NEW', 'WORKING', 'DONE'))
 ```
 
 #### Integer `aiodb.Integer`

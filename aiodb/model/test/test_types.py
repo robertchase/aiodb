@@ -2,7 +2,7 @@
 import datetime
 import pytest
 
-from aiodb.model.types import CHAR
+from aiodb.model.types import Char, Enum
 from aiodb.model.types import String, Integer, Boolean, Date, Datetime, Time
 
 
@@ -19,11 +19,30 @@ from aiodb.model.types import String, Integer, Boolean, Date, Datetime, Time
 )
 def test_char_parse(length, value, expected, strict):
     """validate char parsing"""
+    test = Char(length, strict)
     if expected == ValueError:
         with pytest.raises(expected):
-            CHAR(length, strict).parse(value)
+            test.parse(value)
     else:
-        assert CHAR(length, strict).parse(value) == expected
+        assert test.parse(value) == expected
+
+
+@pytest.mark.parametrize(
+    'allowed,value,expected', (
+        (('FRED', 'WILMA', 'FIDO'), 'FRED', None),
+        (('FRED', 'WILMA', 'FIDO'), 'WILMA', None),
+        (('FRED', 'WILMA', 'FIDO'), 'WHAT', ValueError),
+        (('FRED', 'WILMA', 'FIDO'), 'fred', ValueError),
+    ),
+)
+def test_enum_parse(allowed, value, expected):
+    """validate enum parsing"""
+    test = Enum(*allowed)
+    if expected == ValueError:
+        with pytest.raises(expected):
+            test.parse(value)
+    else:
+        assert test.parse(value) == expected or value
 
 
 @pytest.mark.parametrize(
