@@ -1,4 +1,4 @@
-.PHONY: shell lint test
+.PHONY: shell lint test test_db
 
 ifeq ($(GIT),)
   GIT := $(HOME)/git
@@ -21,4 +21,7 @@ lint:
 	$(DOCKER) pylint aiodb
 
 test:
-	$(DOCKER) pytest aiodb/model
+	$(DOCKER) pytest aiodb/model aiodb/connector/test
+
+test_db:
+	$(DOCKER) pytest aiodb/connector/mysql

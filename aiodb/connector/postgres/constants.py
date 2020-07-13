@@ -1,3 +1,4 @@
+"""shared constants"""
 TYPE_BOOLEAN = 16
 TYPE_INT8 = 20
 TYPE_INT2 = 21

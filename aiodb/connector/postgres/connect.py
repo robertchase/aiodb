@@ -1,20 +1,22 @@
+"""quick and dirty query runner"""
 import asyncio
 import os
 
-from db import DB
+from aiodb.connector.postgres.db import DB
 
 
 async def main(query, *args):
-    db = DB(
+    """run the query"""
+    database = DB(
         host=os.getenv('POSTGRES_HOST', 'postgres'),
-        port=os.getenv('POSTGRES_PORT', 5432),
+        port=int(os.getenv('POSTGRES_PORT', '5432')),
         user=os.getenv('POSTGRES_USER', 'foo'),
         password=os.getenv('POSTGRES_PASSWORD', ''),
         database='test',
         # debug=True,
     )
 
-    cursor = await db.cursor()
+    cursor = await database.cursor()
     await cursor.start_transaction()
     result = await cursor.execute(query, args)
     await cursor.commit()

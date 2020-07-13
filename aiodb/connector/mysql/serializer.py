@@ -3,14 +3,9 @@ import datetime
 import decimal
 import json
 
+import aiodb.connector.serializer as shared
 from aiodb.connector.mysql.bit import Bit
 from aiodb.connector.mysql.constants import FIELD_TYPE
-from aiodb.model.types import to_datetime, to_time
-
-
-def to_date(value):
-    """parse date value"""
-    return datetime.datetime.strptime(value, '%Y-%m-%d').date()
 
 
 def bytes_to_int(value):
@@ -27,10 +22,10 @@ from_mysql = {
     FIELD_TYPE.LONGLONG: int,
     FIELD_TYPE.FLOAT: float,
     FIELD_TYPE.DOUBLE: float,
-    FIELD_TYPE.TIMESTAMP: to_datetime,
-    FIELD_TYPE.DATE: to_date,
-    FIELD_TYPE.TIME: to_time,
-    FIELD_TYPE.DATETIME: to_datetime,
+    FIELD_TYPE.TIMESTAMP: shared.to_datetime,
+    FIELD_TYPE.DATE: shared.to_date,
+    FIELD_TYPE.TIME: shared.to_time,
+    FIELD_TYPE.DATETIME: shared.to_datetime,
     FIELD_TYPE.YEAR: int,
     FIELD_TYPE.JSON: json.loads,
     FIELD_TYPE.NEWDECIMAL: decimal.Decimal,
@@ -43,14 +38,14 @@ def quote(val):
     return f"'{val}'"
 
 
-def from_bool(val):
-    """escape a python bool"""
-    return quote(int(val))
-
-
 def from_float(val):
     """escape a python float"""
-    return quote('%.15g' % val)
+    return quote(shared.from_float(val))
+
+
+def from_bool(val):
+    """escape a python bool"""
+    return quote(shared.from_bool(val))
 
 
 def from_string(val):
@@ -75,38 +70,6 @@ def from_bytes(val):
     return from_string(val.decode('ascii', 'surrogateescape'))
 
 
-def from_date(val):
-    """escape a python datetime.date"""
-    return val.strftime("'%Y-%m-%d'")
-
-
-def from_datetime(val):
-    """escape a python datetime.datetime"""
-    return val.strftime("'%Y-%m-%d %H:%M:%S.%f'")
-
-
-def _time(hour, minute, second, microsecond):
-    if microsecond:
-        return f"'{hour:02d}:{minute:02d}:{second:02d}.{microsecond:06d}'"
-    return f"'{hour:02d}:{minute:02d}:{second:02d}'"
-
-
-def from_time(val):
-    """escape a python datetime.time"""
-    return _time(val.hour, val.minute, val.second, val.microsecond)
-
-
-def from_timedelta(val):
-    """escape a python datetime.timedelta"""
-    sec = int(val.total_seconds())
-    hour = sec // 3600
-    sec = sec % 3600
-    mns = sec // 60
-    sec = sec % 60
-    msec = val.microseconds
-    return _time(hour, mns, sec, msec)
-
-
 def from_bit(val):
     """escape a aiodb.connector.mysql.Bit"""
     return f"b'{val.as_binary()}'"
@@ -128,10 +91,10 @@ def to_mysql(val):
         float: from_float,
         str: from_string,
         bytes: from_bytes,
-        datetime.date: from_date,
-        datetime.datetime: from_datetime,
-        datetime.timedelta: from_timedelta,
-        datetime.time: from_time,
+        datetime.date: shared.from_date,
+        datetime.datetime: shared.from_datetime,
+        datetime.timedelta: shared.from_timedelta,
+        datetime.time: shared.from_time,
         # time.struct_time: escape_struct_time,
         decimal.Decimal: quote,
         set: from_set,

@@ -9,6 +9,7 @@ from fsm.parser import Parser as parser
 from aiodb import Cursor
 from aiodb.model import sync as to_sync
 from .serializer import to_mysql
+from .handler_mixin import HandlerMixin
 
 
 log = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ def on_undefined(state, event, *args):  # pylint: disable=unused-argument
     log.debug(msg)
 
 
-class MysqlHandler:
+class MysqlHandler(HandlerMixin):
     """mysql specific handler"""
 
     def __init__(self, db):
@@ -102,24 +103,6 @@ class MysqlHandler:
             await self.read()
         return self.cursor
 
-    async def close(self):
-        """close the database connection"""
-        self.writer.close()
-        await self.writer.wait_closed()
-
-    def send(self, data):
-        """send data to database"""
-        self.writer.write(data)
-        self._send = True
-
-    async def read(self, length=1000):
-        """read up to 1000 bytes from the database"""
-        data = await self.reader.read(length)
-        self.packet_fsm.handle('data', data)
-        if self._send:
-            await self.writer.drain()
-            self._send = False
-
     async def execute(self, query,
                       **kwargs):  # pylint: disable=unused-argument
         """send query to database and wait for response"""
@@ -140,11 +123,6 @@ class MysqlHandler:
         """handle arrival of packet"""
         if not self.fsm.handle('packet', packet, sequence):
             self.close()
-
-    @property
-    def is_connected(self):
-        """return True if connected to database"""
-        return self.fsm.context.is_connected
 
 
 class SyncMysqlHandler(MysqlHandler):
