@@ -135,12 +135,11 @@ class Model:
             try:
                 # dot notation access for joined tables
                 return object.__getattribute__(self, '_tables')[name]
-            except AttributeError:
-                pass
-            except KeyError:
+            except (AttributeError, KeyError):
                 pass
             raise
-        if name in ('_primary',):
+
+        if name == '_primary':  # special case for primary key: return Field
             return value
         if isinstance(value, Field):
             values = object.__getattribute__(self, '_values')
