@@ -1,5 +1,7 @@
 """test save operations"""
 # pylint: disable=protected-access
+from unittest import mock
+
 from aiodb import Model, Field, Integer
 
 from aiodb.model.test.conftest import run_async
@@ -73,14 +75,10 @@ def test_insert_pk(cursor):
        execute it uses cursor.last_id to update the primary key of an inserted
        object.
     """
-    primary_key = 100
-
-    async def execute(*args, **kwargs):  # pylint: disable=unused-argument
-        """set last_id during execute call, since save cleared it"""
-        cursor.last_id = primary_key
+    primary_key = 123
 
     test = MockTable(name='test', yeah='lala')
-    cursor._execute = execute
+    cursor.last_id = mock.Mock(return_value=primary_key)
     run_async(test.save, cursor)
     assert test.the_key == primary_key
 

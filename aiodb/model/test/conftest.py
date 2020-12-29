@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-from aiodb.model.cursor import Cursor as abstract_cursor
+from aiodb.cursor import Cursor as abstract_cursor
 
 
 @pytest.fixture
@@ -14,6 +14,8 @@ def cursor():
         execute=mock.AsyncMock(),
         serialize=str,
         close=mock.AsyncMock(),
+        last_id=mock.Mock(return_value=100),
+        last_message=mock.Mock(return_value="test message"),
         quote="'",
         transactions=False,
     )

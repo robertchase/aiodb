@@ -98,8 +98,8 @@ class Query:
 
         return self
 
-    def _pre_execute(self,  # pylint: disable=too-many-arguments
-                     one, limit, offset, for_update, quote):
+    def _prepare(self,  # pylint: disable=too-many-arguments
+                 one, limit, offset, for_update, quote):
         if one and limit:
             raise Exception('one and limit parameters are mutually exclusive')
         if one:
@@ -136,11 +136,8 @@ class Query:
                       offset=None, for_update=False):
         """execute query against database"""
 
-        stmt = self._pre_execute(one, limit, offset, for_update, cursor.quote)
+        stmt = self._prepare(one, limit, offset, for_update, cursor.quote)
         columns, values = await cursor.execute(stmt, args)
-        return self._post_execute(columns, values, one)
-
-    def _post_execute(self, columns, values, one):
         columns = [col.split('_', 1)[1] for col in columns]
 
         rows = []
@@ -165,19 +162,6 @@ class Query:
             rows = rows[0] if rows else None
 
         return rows
-
-    @classmethod
-    def patch(cls):
-        """replace all async methods in Query class"""
-        cls.execute = cls.execute_sync
-
-    def execute_sync(self,  # pylint: disable=too-many-arguments
-                     cursor, args=None, one=False, limit=None,
-                     offset=None, for_update=False):
-        """execute query against database"""
-        stmt = self._pre_execute(one, limit, offset, for_update, cursor.quote)
-        columns, values = cursor.execute(stmt, args)
-        return self._post_execute(columns, values, one)
 
 
 class QueryTable:  # pylint: disable=too-many-instance-attributes

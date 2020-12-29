@@ -37,7 +37,7 @@ class D(Model):  # pylint: disable=invalid-name
 
 def test_expression():
     """verify simple SELECT expression"""
-    stmt = D.query()._pre_execute(  # pylint: disable=protected-access
+    stmt = D.query()._prepare(  # pylint: disable=protected-access
         False, None, None, None, "'")
     result = \
         "SELECT 'd'.'a' AS 0_a, NOW() AS 0_b, FN('z') AS 0_c FROM 'd' AS 'd'"
@@ -47,7 +47,7 @@ def test_expression():
 def test_table_name():
     """verify _build use of table name"""
     query = A.query().where('{TABLE.A}.id=10')
-    stmt = query._pre_execute(  # pylint: disable=protected-access
+    stmt = query._prepare(  # pylint: disable=protected-access
         False, None, None, None, "'")
     expect = (
         "SELECT 'a'.'id' AS 0_id FROM 'yikes' AS 'a'"
@@ -59,7 +59,7 @@ def test_table_name():
 def test_table_names():
     """verify _build use of table names"""
     query = A.query().join(B, alias='FOO').where('{TABLE.A}.id={TABLE.FOO}.a')
-    stmt = query._pre_execute(  # pylint: disable=protected-access
+    stmt = query._prepare(  # pylint: disable=protected-access
         False, None, None, None, "'")
     expect = (
         "SELECT 'a'.'id' AS 0_id, 'FOO'.'a_id' AS 1_a_id,"

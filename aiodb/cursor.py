@@ -15,7 +15,8 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
     """abstract cursor class"""
 
     def __init__(self,  # pylint: disable=too-many-arguments
-                 execute, serialize, close, quote='`', transactions=True):
+                 execute, serialize, close, last_id, last_message, quote='`',
+                 transactions=True):
         """Database cursor
 
            Abstract interface to a database. A cursor represents one
@@ -37,14 +38,6 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
                         columns - list of column names (may be empty)
                         rows    - list of row tuples (may be empty)
 
-                    Notes:
-                        1. The execute callable manages the last_id attribute
-                            of the cursor object, which contains the auto-
-                            generated id of the most recent query.
-                        2. The execute callable manages the message attribute
-                            of the cursor object which contains any message
-                            returned from the most recent query.
-
                 serialize - callable that escapes inputs
 
                     Definition:
@@ -56,6 +49,12 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
                     Return:
                         None
 
+                last_id - callable that returns the last auto-generated id from
+                          the most recent query
+
+                last_message - callable that returns the message from the most
+                               recent query
+
                 quote - quote character surrounding table/field names
 
                 transactions - if False, don't perform transactions
@@ -63,10 +62,10 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
         self._execute = execute
         self.serialize = serialize
         self.close = close
+        self.last_id = last_id
+        self.last_message = last_message
         self.quote = quote
 
-        self.last_id = None
-        self.message = None
         self.query = None
         self.query_after = None
 
@@ -101,26 +100,6 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
         self._transaction_depth = 0
         await self._transaction('ROLLBACK')
 
-    def _pre_execute(self, query, args=None,
-                     **kwargs):  # pylint: disable=unused-argument
-        self.query = query
-        self.query_after = None
-
-        def _serialize(item):
-            if isinstance(item, Raw):
-                return item.data
-            return self.serialize(item)
-
-        if args is not None:
-            if isinstance(args, (list, tuple)):
-                args = tuple([_serialize(arg) for arg in args])
-            else:
-                args = _serialize(args)
-            query = query % args
-
-        self.query_after = query
-        return query
-
     async def execute(self, query, args=None, **kwargs):
         """Execute an arbitrary SQL command
 
@@ -137,7 +116,22 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
           Result:
               Same as result of execute function specified in __init__.
         """
-        query = self._pre_execute(query, args)
+        self.query = query
+        self.query_after = None
+
+        def _serialize(item):
+            if isinstance(item, Raw):
+                return item.data
+            return self.serialize(item)
+
+        if args is not None:
+            if isinstance(args, (list, tuple)):
+                args = tuple([_serialize(arg) for arg in args])
+            else:
+                args = _serialize(args)
+            query = query % args
+
+        self.query_after = query
         return await self._execute(query, **kwargs)
 
     async def select(self, query, args=None, one=False):
@@ -163,9 +157,7 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
                     select_expr
         """
         columns, rows = await self.execute(query, args=args)
-        return self._post_select(columns, rows, one)
 
-    def _post_select(self, columns, rows, one):
         class Row:
             """represent a row of a resultset"""
 
@@ -183,48 +175,3 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
             if one and result:
                 return result[0]
             return result
-
-    @classmethod
-    def patch(cls):
-        """replace all async methods in Cursor class"""
-        cls._transaction = cls._transaction_sync
-        cls.start_transaction = cls.start_transaction_sync
-        cls.commit = cls.commit_sync
-        cls.rollback = cls.rollback_sync
-        cls.execute = cls.execute_sync
-        cls.select = cls.select_sync
-
-    def _transaction_sync(self, command):
-        if self._has_transactions:
-            self.execute(command)
-
-    def start_transaction_sync(self):
-        """Start database transaction"""
-        self._transaction_depth += 1
-        if self._transaction_depth == 1:
-            self._transaction('BEGIN')
-
-    def commit_sync(self):
-        """Commit database transaction"""
-        if self._transaction_depth == 0:
-            return
-        self._transaction_depth -= 1
-        if self._transaction_depth == 0:
-            self._transaction('COMMIT')
-
-    def rollback_sync(self):
-        """Rollback database transaction"""
-        if self._transaction_depth == 0:
-            return
-        self._transaction_depth = 0
-        self._transaction('ROLLBACK')
-
-    def execute_sync(self, query, args=None, **kwargs):
-        """Execute an arbitrary SQL command"""
-        query = self._pre_execute(query, args)
-        return self._execute(query, **kwargs)
-
-    def select_sync(self, query, args=None, one=False):
-        """Run an arbitrary select statement"""
-        columns, rows = self.execute(query, args=args)
-        return self._post_select(columns, rows, one)

@@ -60,7 +60,7 @@ Using a connection to the database, called a `cursor`,
 the `employee` can be saved:
 
 ```
->>> employee.save(cursor)
+>>> await employee.save(cursor)
 >>> print(employee.as_dict())
 {'id': 123, 'name': 'Fred', 'start_date' = datetime.date(2020, 1, 1)}
 ```
@@ -93,7 +93,7 @@ employee.name = 'Fred Mercury'
 then `save` will detect the change, and perform an `UPDATE`:
 
 ```
->>> employee.save(cursor)
+>>> await employee.save(cursor)
 >>> cursor.query
 'UPDATE  `employee` SET `name`=%s WHERE  `id`=%s'
 ```
@@ -112,7 +112,7 @@ Required fields are enforced; otherwise, defaults are assigned.
 
 If you define your own constructor, be sure to use `super`.
 
-#### save - `await save(cursor, insert=True)`
+#### save - `save(cursor, insert=True)`
 
 The `save` method saves any changes in the `Model` to the database
 referenced by `cursor`.
@@ -133,24 +133,14 @@ After the `save` completes,
 the names of the updated fields are provided
 in the instance attribute `_updated`.
 
-When the `cursor` is in `sync` mode,
-then the `save` method cannot be called with `await`.
+#### load - `load(cursor, primary_key)`
 
-#### load - `await load(cursor, primary_key)`
-
-The `load` method creates a single instance of `Model` from the database
+The `load` classmethod creates a single instance of `Model` from the database
 referenced by `cursor`, by doing a `SELECT` by primary key.
 
-#### load_sync - `load(cursor, primary_key)`
-
-Use `load_sync` instead of `load` when the `cursor` is in `sync` mode.
-
-#### delete
+#### delete - `delete(cursor)`
 
 The `delete` method deletes a single row from the database
 referenced by `cursor`, by doing a `DELETE` by primary key.
-
-When the `cursor` is in `sync` mode,
-then the `delete` method cannot be called with `await`.
 
 #### query
