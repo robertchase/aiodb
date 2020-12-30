@@ -49,6 +49,7 @@ class Model:
                 setattr(self, field.name, field.default)
         for name, value in kwargs.items():
             setattr(self, name, value)
+        self._updated = []
         self._cache_field_values()
 
     def __repr__(self):

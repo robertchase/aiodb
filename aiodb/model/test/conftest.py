@@ -12,8 +12,9 @@ def cursor():
     """return a real cursor with mocked attributes"""
     return abstract_cursor(
         execute=mock.AsyncMock(),
-        serialize=str,
+        ping=mock.AsyncMock(),
         close=mock.AsyncMock(),
+        serialize=str,
         last_id=mock.Mock(return_value=100),
         last_message=mock.Mock(return_value="test message"),
         quote="'",

@@ -15,8 +15,8 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
     """abstract cursor class"""
 
     def __init__(self,  # pylint: disable=too-many-arguments
-                 execute, serialize, close, last_id, last_message, quote='`',
-                 transactions=True):
+                 execute, ping, close, serialize, last_id, last_message,
+                 quote='`', transactions=True):
         """Database cursor
 
            Abstract interface to a database. A cursor represents one
@@ -38,16 +38,22 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
                         columns - list of column names (may be empty)
                         rows    - list of row tuples (may be empty)
 
-                serialize - callable that escapes inputs
+                ping - callable that verifies the database connection
 
-                    Definition:
-                        serialize(value) => escaped_value
+                    async def ping()
+                    Return:
+                        bool
 
                 close - callable that closes the database connection
 
                     async def close()
                     Return:
                         None
+
+                serialize - callable that escapes inputs
+
+                    Definition:
+                        serialize(value) => escaped_value
 
                 last_id - callable that returns the last auto-generated id from
                           the most recent query
@@ -60,8 +66,9 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
                 transactions - if False, don't perform transactions
         """
         self._execute = execute
-        self.serialize = serialize
+        self.ping = ping
         self.close = close
+        self.serialize = serialize
         self.last_id = last_id
         self.last_message = last_message
         self.quote = quote
