@@ -157,11 +157,6 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
 
             Result:
                 list of row-objects (or single row-object) or None
-
-            Notes:
-                1. a column name is either the value specified in the
-                    query 'AS' clause, or the value used to indicate the
-                    select_expr
         """
         columns, rows = await self.execute(query, args=args)
 
