@@ -8,8 +8,8 @@ log = logging.getLogger(__name__)
 class Pool:
     """connection pool"""
 
-    def __init__(self):
-        self.connector = None
+    def __init__(self, connector):
+        self.connector = connector
         self.pool = []
 
     @classmethod
@@ -22,14 +22,13 @@ class Pool:
 
            size is the number of connections in the pool
         """
-        self = cls()
-        self.connector = connector
+        self = cls(connector)
 
         for index in range(size):
             log.debug("creating pooled connection %d", index + 1)
             con = await connector()
             con.pool_index = index + 1
-            con.close = self._pooled_connection_close(con)  # pylint: disable=protected-access
+            con.close = self.pooled_connection_close(con)
             self.pool.insert(0, con)
 
         return self
@@ -37,8 +36,8 @@ class Pool:
     async def cursor(self):
         """return a database connection
 
-           if all connections in the pool are in use, a new connection will be
-           temporarily established
+           if all connections in the pool are in use, a new on-demand
+           connection will be established, but not added to the pool
         """
         try:
             connection = self.pool.pop()
@@ -50,32 +49,37 @@ class Pool:
             connection = await self.connector()
         return connection
 
-    def _pooled_connection_close(self, connection):
-        """replace connection with a new connection and return it to the pool
-        """
-        connection._close = connection.close  # pylint: disable=protected-access
+    async def _replace(self, connection):
+        """replace connection with a new connection"""
+        await connection.raw_close()
+        con = await self.connector()
+        con.pool_index = connection.pool_index
+        con.close = self.pooled_connection_close(con)
+        return con
+
+    def pooled_connection_close(self, connection):
+        """close connection and return to pool"""
+        connection.raw_close = connection.close
 
         async def _close():
-            log.debug("replacing pooled connection %d", connection.pool_index)
+            """close connection and replace with new connection"""
             try:
-                await connection._close()  # pylint: disable=protected-access
-                con = await self.connector()
-                con.pool_index = connection.pool_index
-                con.close = self._pooled_connection_close(con)
+                log.debug("replacing pooled connection %d",
+                          connection.pool_index)
+                con = await self._replace(connection)
                 self.pool.insert(0, con)
             except Exception:  # pylint: disable=broad-except
+                # something didn't work, put the old connection in the pool
                 self.pool.insert(0, connection)
 
         return _close
 
     async def _reconnect(self, connection):
-        """reconnect when a connection fails a ping()"""
+        """reconnect a pooled connection"""
         log.debug("reconnecting pooled connection %d", connection.pool_index)
         try:
-            await connection._close()  # pylint: disable=protected-access
-            con = await self.connector()
-            con.pool_index = connection.pool_index
-            con.close = self._pooled_connection_close(con)
-            return con
+            return await self._replace(connection)
         except Exception:  # pylint: disable=broad-except
-            self.pool.insert(0, connection)
+            log.exception("unable to reconnect pooled connection %d",
+                          connection.pool_index)
+            return connection
