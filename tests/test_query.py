@@ -17,14 +17,14 @@ class B(Model):  # pylint: disable=invalid-name
     """test model"""
     __TABLENAME__ = 'yeah'
     id = Field(is_primary=True)
-    a_id = Field(foreign='aiodb.model.test.test_query.A')
-    c_id = Field(foreign='aiodb.model.test.test_query.C')
+    a_id = Field(foreign='tests.test_query.A')
+    c_id = Field(foreign='tests.test_query.C')
 
 
 class C(Model):  # pylint: disable=invalid-name
     """test model"""
     id = Field(is_primary=True)
-    a_id = Field(foreign='aiodb.model.test.test_query.A')
+    a_id = Field(foreign='tests.test_query.A')
 
 
 class D(Model):  # pylint: disable=invalid-name

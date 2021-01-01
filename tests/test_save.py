@@ -4,7 +4,7 @@ from unittest import mock
 
 from aiodb import Model, Field, Integer
 
-from aiodb.model.test.conftest import run_async
+from tests.conftest import run_async
 
 
 class MockTable(Model):

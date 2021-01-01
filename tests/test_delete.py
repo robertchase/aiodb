@@ -1,5 +1,5 @@
 """verify delete operation"""
-from aiodb.model.test.test_save import MockTable
+from tests.test_save import MockTable
 
 
 def test_delete(cursor, run):

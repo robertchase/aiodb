@@ -1,5 +1,5 @@
 """test model insert method"""
-from aiodb.model.test.test_save import MockTable
+from tests.test_save import MockTable
 
 
 def test_insert(cursor, run):

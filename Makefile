@@ -21,7 +21,4 @@ lint:
 	$(DOCKER) pylint aiodb
 
 test:
-	$(DOCKER) pytest aiodb/model aiodb/connector/test
-
-test_db:
-	$(DOCKER) pytest aiodb/connector/mysql
+	$(DOCKER) pytest tests
