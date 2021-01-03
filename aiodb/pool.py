@@ -5,6 +5,10 @@ import logging
 log = logging.getLogger(__name__)
 
 
+class DatabaseReconnectError(Exception):
+    """unable to reconnect to database"""
+
+
 class Pool:
     """connection pool"""
 
@@ -47,6 +51,9 @@ class Pool:
         except IndexError:
             log.debug("connection pool exhausted")
             connection = await self.connector()
+        except DatabaseReconnectError:
+            self.pool.insert(0, connection)
+            raise
         return connection
 
     async def _replace(self, connection):
@@ -79,7 +86,5 @@ class Pool:
         log.debug("reconnecting pooled connection %d", connection.pool_index)
         try:
             return await self._replace(connection)
-        except Exception:  # pylint: disable=broad-except
-            log.exception("unable to reconnect pooled connection %d",
-                          connection.pool_index)
-            return connection
+        except Exception as exc:  # pylint: disable=broad-except
+            raise DatabaseReconnectError(str(exc))
