@@ -58,7 +58,7 @@ class Pool:
         return con
 
     def pooled_connection_close(self, connection):
-        """close connection and return to pool"""
+        """close connection and return it to the pool"""
         connection.raw_close = connection.close
 
         async def _close():
