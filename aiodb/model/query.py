@@ -4,7 +4,7 @@ The MIT License (MIT)
 https://github.com/robertchase/aiodb/blob/master/LICENSE.txt
 """
 # pylint: disable=protected-access
-from ergaleia.import_by_path import import_by_path
+from aiodb.util import import_by_path
 
 
 class Query:

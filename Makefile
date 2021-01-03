@@ -1,4 +1,4 @@
-.PHONY: shell lint test test_db
+.PHONY: shell lint test
 
 ifeq ($(GIT),)
   GIT := $(HOME)/git
@@ -10,7 +10,7 @@ NET := --net test
 MOUNT := /opt/git
 VOLUMES := -v=$(GIT):$(MOUNT)
 WORKING := -w $(MOUNT)/aiodb
-PYTHONPATH := -e PYTHONPATH=$(MOUNT)/ergaleia:$(MOUNT)/fsm:.
+PYTHONPATH := -e PYTHONPATH=.
 
 DOCKER := docker run --rm -it $(VOLUMES) $(PYTHONPATH) $(WORKING) $(NET) $(IMAGE)
 

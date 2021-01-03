@@ -1,7 +1,6 @@
 """database field"""
-from ergaleia import import_by_path
-
 from aiodb.model.types import String
+from aiodb.util import import_by_path
 
 
 class Field():  # pylint: disable=too-few-public-methods
