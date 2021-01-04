@@ -107,6 +107,15 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
         self._transaction_depth = 0
         await self._transaction('ROLLBACK')
 
+    async def __aenter__(self):
+        await self.start_transaction()
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        if exc_type:
+            await self.rollback()
+        else:
+            await self.commit()
+
     async def execute(self, query, args=None, **kwargs):
         """Execute an arbitrary SQL command
 
