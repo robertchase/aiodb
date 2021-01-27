@@ -1,8 +1,7 @@
 # aiodb
 ## async/await enabled database access
 
-`aiodb` is an `orm`
-and a set of connectors which
+`aiodb` is a general `cursor` and `orm` which
 asynchronously interact with relational databases
 using python's `async`/`await` features.
 
@@ -11,9 +10,12 @@ using python's `async`/`await` features.
 Here is a program that defines a `model` for a table named `test`, and then
 saves a new row in the table.
 
+The cursor is bound to a database-specific connection for `mysql`
+imported from aiomysql.
+
 ```
-from aiodb import Model, Field, Integer
-from aiodb.connector.mysql import DB
+from aiodb import Cursor, Model, Field, Integer
+from aiomysql import MysqlConnector
 
 
 class Test(Model):
@@ -23,8 +25,8 @@ class Test(Model):
 
 
 async def main():
-    db = DB(database='test', user='fred', password='flintstone')
-    cursor = await db.cursor()
+    con = await MysqlConnector(host="db", user="fred", password="flintstone")
+    cursor = Cursor.bind(con)
     t = Test(name='barney')
     await t.save(cursor)
     print(t.as_dict())
@@ -36,7 +38,7 @@ if __name__ == '__main__':
 ```
 
 The two places where the program might block for I/O
-are at `db.cursor()` (where the database connection is established)
+are at `MysqlConnector` construction (where the database connection is established)
 and at `t.save(cursor)` (where the INSERT happens);
 both places use `await` to allow other things to occur while the I/O happens.
 

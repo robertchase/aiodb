@@ -9,13 +9,15 @@ from aiodb.model.query import _pair
 
 class A(Model):  # pylint: disable=invalid-name
     """test model"""
-    __TABLENAME__ = 'yikes'
+    class Meta:  # pylint: disable=too-few-public-methods,missing-class-docstring
+        table_name = 'yikes'
     id = Field(is_primary=True)
 
 
 class B(Model):  # pylint: disable=invalid-name
     """test model"""
-    __TABLENAME__ = 'yeah'
+    class Meta:  # pylint: disable=too-few-public-methods,missing-class-docstring
+        table_name = 'yeah'
     id = Field(is_primary=True)
     a_id = Field(foreign='tests.test_query.A')
     c_id = Field(foreign='tests.test_query.C')
@@ -29,7 +31,8 @@ class C(Model):  # pylint: disable=invalid-name
 
 class D(Model):  # pylint: disable=invalid-name
     """test model"""
-    __TABLENAME__ = 'd'
+    class Meta:  # pylint: disable=too-few-public-methods,missing-class-docstring
+        table_name = 'd'
     a = Field()
     b = Field(expression='NOW()')
     c = Field(expression='FN({Q}z{Q})')
@@ -37,7 +40,7 @@ class D(Model):  # pylint: disable=invalid-name
 
 def test_expression():
     """verify simple SELECT expression"""
-    stmt = D.query()._prepare(  # pylint: disable=protected-access
+    stmt = D.query._prepare(  # pylint: disable=protected-access
         False, None, None, None, "'")
     result = \
         "SELECT 'd'.'a' AS 0_a, NOW() AS 0_b, FN('z') AS 0_c FROM 'd' AS 'd'"
@@ -46,7 +49,7 @@ def test_expression():
 
 def test_table_name():
     """verify _build use of table name"""
-    query = A.query().where('{TABLE.A}.id=10')
+    query = A.query.where('{TABLE.A}.id=10')
     stmt = query._prepare(  # pylint: disable=protected-access
         False, None, None, None, "'")
     expect = (
@@ -58,12 +61,14 @@ def test_table_name():
 
 def test_table_names():
     """verify _build use of table names"""
-    query = A.query().join(B, alias='FOO').where('{TABLE.A}.id={TABLE.FOO}.a')
+    query = A.query.join(B, alias='FOO').where('{TABLE.A}.id={TABLE.FOO}.a')
     stmt = query._prepare(  # pylint: disable=protected-access
         False, None, None, None, "'")
     expect = (
-        "SELECT 'a'.'id' AS 0_id, 'FOO'.'a_id' AS 1_a_id,"
-        " 'FOO'.'c_id' AS 1_c_id, 'FOO'.'id' AS 1_id"
+        "SELECT 'a'.'id' AS 0_id,"
+        " 'FOO'.'id' AS 1_id,"
+        " 'FOO'.'a_id' AS 1_a_id,"
+        " 'FOO'.'c_id' AS 1_c_id"
         " FROM 'yikes' AS 'a' JOIN 'yeah' AS 'FOO'"
         " ON 'FOO'.'a_id' = 'a'.'id' WHERE 'a'.id='FOO'.a"
     )
@@ -73,9 +78,9 @@ def test_table_names():
 def test_duplicate():
     """verify duplicate table detection"""
     with pytest.raises(ValueError) as ex:
-        A.query().join(C).join(C)
+        A.query.join(C).join(C)
     assert ex.value.args[0] == "duplicate table 'c'"
-    A.query().join(C).join(C, alias='CC')
+    A.query.join(C).join(C, alias='CC')
 
 
 @pytest.mark.parametrize(

@@ -4,7 +4,8 @@ The MIT License (MIT)
 https://github.com/robertchase/aiodb/blob/master/LICENSE.txt
 """
 # pylint: disable=protected-access
-from aiodb.util import import_by_path
+import inspect
+from aiodb.util import import_by_path, snake_to_camel
 
 
 class Query:
@@ -75,10 +76,11 @@ class Query:
         """
         try:
             table = import_by_path(table)
-        except ValueError:
-            raise TypeError("invalid path to table: '{}'".format(table))
-        except ModuleNotFoundError:
-            raise TypeError("unable to load '{}'".format(table))
+        except ValueError as exc:
+            raise TypeError(
+                "invalid path to table: '{}'".format(table)) from exc
+        except ModuleNotFoundError as exc:
+            raise TypeError("unable to load '{}'".format(table)) from exc
 
         field, table2, field2 = _pair(table, self._tables, table2)
 
@@ -164,6 +166,15 @@ class Query:
         return rows
 
 
+def get_class(item):
+    """get class of model or QueryTable"""
+    if isinstance(item, QueryTable):
+        value = item.cls
+    else:
+        value = inspect.getmro(item)[0]
+    return value
+
+
 class QueryTable:  # pylint: disable=too-many-instance-attributes
     """container for a query table"""
 
@@ -172,9 +183,9 @@ class QueryTable:  # pylint: disable=too-many-instance-attributes
                  join_table_name=None, join_column_name=None):
 
         self.cls = cls
-        self.alias = alias or _camel(cls.__name__)
+        self.alias = alias or snake_to_camel(cls.__name__)
         self.table_name = alias or cls.__name__
-        self.column_count = len(cls._fields())
+        self.column_count = len(cls._m.fields)
 
         self.join_type = join_type
         self.join_column = column
@@ -205,28 +216,17 @@ class QueryTable:  # pylint: disable=too-many-instance-attributes
     @property
     def name(self):
         """return underlying table name"""
-        return self.cls.__TABLENAME__
+        return self.cls._m.table_name
 
     def _fields(self):
-        return self.cls._db_read()
+        return self.cls._m.db_read
 
     def _primary(self):
-        return self.cls._primary()
+        return self.cls._m.primary
 
-    def _foreign(self):
-        return self.cls._foreign()
-
-    def _class(self):
-        return self.cls
-
-
-def _camel(name):
-    return ''.join(
-        [
-            c if c.islower() else '_' + c.lower()
-            for c in name[0].lower() + name[1:]
-        ]
-    )
+    @property
+    def _m(self):
+        return self.cls._m
 
 
 def _column(table, field, quote):
@@ -260,8 +260,8 @@ def _pair(table, tables, table2=None):
         else:
             try:
                 table2 = import_by_path(table2)
-            except ValueError:
-                raise TypeError(f"invalid path to table: '{table2}'")
+            except ValueError as exc:
+                raise TypeError(f"invalid path to table: '{table2}'") from exc
             match = [t for t in tables if t.cls == table2]
             if not match:
                 raise TypeError(
@@ -283,7 +283,7 @@ def _pair(table, tables, table2=None):
     ref = _find_primary_key_reference(table, tables)
     if ref:
         tab, field = ref
-        return table._primary().name, tab.alias, field
+        return table._m.primary.name, tab.alias, field
 
     raise TypeError(
         "no primary or foreign key matches found for '{}'".format(
@@ -299,15 +299,15 @@ def _find_foreign_key_reference(table, tables):
        tables - a list or tuple of Models or QueryTables
     """
     try:
-        foreign = table._foreign()
-    except AttributeError:
-        raise TypeError('table must be a Model or QueryTable')
+        foreign = table._m.foreign
+    except AttributeError as exc:
+        raise TypeError('table must be a Model or QueryTable') from exc
     if len(foreign) == 0:
         return None
     refs = [
         (t, f.name) for f in foreign
         for t in tables
-        if f.foreign == t._class()
+        if f.foreign == get_class(t)
     ]
     if len(refs) == 0:
         return None
@@ -328,8 +328,8 @@ def _find_primary_key_reference(table, tables):
     """
     refs = [
         (t, f.name) for t in tables
-        for f in t._foreign()
-        if f.foreign == table._class()
+        for f in t._m.foreign
+        if f.foreign == get_class(table)
     ]
     if len(refs) == 0:
         return None

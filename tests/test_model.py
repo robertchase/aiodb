@@ -6,15 +6,27 @@ from aiodb import ReservedAttributeError, RequiredAttributeError
 from aiodb import NoneValueError, MultiplePrimaryKeysError
 
 
+def test_table_name():
+    """test table naming"""
+
+    class MyTestTable1(Model):
+        """test model"""
+    assert MyTestTable1._m.table_name == "my_test_table"
+
+    class MyTestTable2(Model):
+        """test model"""
+        class Meta:  # pylint: disable=too-few-public-methods,missing-class-docstring
+            table_name = "foo_bar"
+    assert MyTestTable2._m.table_name == "foo_bar"
+
+
 def test_reserved():
     """verify reserved operation"""
 
-    class Test(Model):
-        """model with a field name violating reserved words"""
-        save = Field()
-
     with pytest.raises(ReservedAttributeError):
-        Test()
+        class Test(Model):  # pylint: disable=unused-variable
+            """model with a field name violating reserved words"""
+            save = Field()
 
 
 def test_name():
@@ -25,8 +37,8 @@ def test_name():
         yeah = Field(column='select', is_nullable=True)
 
     test = Test()
-    assert test._field('yeah').name == 'yeah'
-    assert test._field('yeah').column == 'select'
+    assert test._m.field('yeah').name == 'yeah'
+    assert test._m.field('yeah').column == 'select'
 
 
 def test_required():
@@ -74,14 +86,11 @@ def test_is_nullable():
 def test_multiple_primary():
     """test prevention of multiple primary keys"""
 
-    class Test(Model):
-        """bad model with multiple primary keys"""
-        id = Field(default=0, is_primary=True)
-        idd = Field(default=0, is_primary=True)
-
-    test = Test()
     with pytest.raises(MultiplePrimaryKeysError):
-        assert test._primary().name == 'id'
+        class Test(Model):  # pylint: disable=unused-variable
+            """bad model with multiple primary keys"""
+            id = Field(default=0, is_primary=True)
+            idd = Field(default=0, is_primary=True)
 
 
 class FieldTest(Model):
@@ -95,37 +104,37 @@ class FieldTest(Model):
 def test_field():
     """verify _field"""
     test = FieldTest(a=0, b=0, c=0, d=0)
-    assert test._field('a').name == 'a'
+    assert test._m.field('a').name == 'a'
 
 
 def test_fields():
     """verify _fields"""
     test = FieldTest(a=0, b=0, c=0, d=0)
-    assert sorted(f.name for f in test._fields()) == ['a', 'b', 'c', 'd']
+    assert sorted(f.name for f in test._m.fields) == ['a', 'b', 'c', 'd']
 
 
 def test_primary():
     """verify _primary"""
     test = FieldTest(a=0, b=0, c=0, d=0)
-    assert test._primary().name == 'a'
+    assert test._m.primary.name == 'a'
 
 
 def test_db_read():
     """verify _db_read"""
     test = FieldTest(a=0, b=0, c=0, d=0)
-    assert sorted(f.name for f in test._db_read()) == ['a', 'b', 'c']
+    assert sorted(f.name for f in test._m.db_read) == ['a', 'b', 'c']
 
 
 def test_db_insert():
     """verify _db_insert"""
     test = FieldTest(a=0, b=0, c=0, d=0)
-    assert sorted(f.name for f in test._db_insert()) == ['a', 'b']
+    assert sorted(f.name for f in test._m.db_insert) == ['a', 'b']
 
 
 def test_db_update():
     """verify _db_update"""
     test = FieldTest(a=0, b=0, c=0, d=0)
-    assert sorted(f.name for f in test._db_update()) == ['b']
+    assert sorted(f.name for f in test._m.db_update) == ['b']
 
 
 def test_repr():

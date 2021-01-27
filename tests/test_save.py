@@ -10,7 +10,8 @@ from tests.conftest import run_async
 class MockTable(Model):
     """test model"""
 
-    __TABLENAME__ = 'tester'
+    class Meta:  # pylint: disable=too-few-public-methods,missing-class-docstring
+        table_name = "tester"
 
     the_key = Field(Integer, is_primary=True)
     name = Field()
@@ -101,7 +102,7 @@ def test_insert_updated(cursor):
 
     test = MockTable(name='a', yeah='a')
     run_async(test.save, cursor)
-    assert test._updated == []
+    assert test._updated == {}
 
 
 def test_update_updated(cursor):
@@ -111,12 +112,12 @@ def test_update_updated(cursor):
 
     test.name = 'test'
     run_async(test.save, cursor)
-    assert test._updated == ['name']
+    assert test._updated == {'name': ('a', 'test')}
 
     test.name = 'foo'
     test.yeah = 'bar'
     run_async(test.save, cursor)
-    assert test._updated == ['name', 'yeah']
+    assert test._updated == {'name': ('test', 'foo'), 'yeah': ('a', 'bar')}
 
     run_async(test.save, cursor)  # nothing changed
-    assert test._updated == []
+    assert test._updated == {}

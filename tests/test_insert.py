@@ -10,7 +10,7 @@ def test_insert(cursor, run):
     run(test.insert, cursor, primary_key)
     assert test.the_key == primary_key
     assert cursor.query_after == \
-        "INSERT INTO 'tester' ( 'name','the_key' ) VALUES ( test,100 )"
+        "INSERT INTO 'tester' ( 'the_key','name' ) VALUES ( 100,test )"
 
 
 def test_insert_pk(cursor, run):
@@ -19,4 +19,4 @@ def test_insert_pk(cursor, run):
     test = MockTable(the_key=1000, name='test')
     run(test.insert, cursor)
     assert cursor.query_after == \
-        "INSERT INTO 'tester' ( 'name','the_key' ) VALUES ( test,1000 )"
+        "INSERT INTO 'tester' ( 'the_key','name' ) VALUES ( 1000,test )"

@@ -1,9 +1,9 @@
 """Object Relational Model"""
-from collections import namedtuple
-
+# pylint: disable=protected-access
 from aiodb.cursor import Raw
 from aiodb.model.field import Field
 from aiodb.model.query import Query
+from aiodb.util import snake_to_camel
 
 
 __reserved__ = ('as_dict', 'delete', 'load', 'save')
@@ -30,18 +30,89 @@ def quote(name):
     return '{Q}' + name + '{Q}'
 
 
-PreSave = namedtuple('PreSave', 'stmt, args, new, key, fields', defaults=(
-    None, None, False, None, None))
+class _Meta:  # pylint: disable=too-few-public-methods
+    # pylint: disable=too-many-instance-attributes
+
+    def __init__(self, table_name=None):
+        self.cls = None
+        self.table_name = table_name
+        self.fields = None
+        self.db_read = None
+        self.db_insert = None
+        self.db_update = None
+        self.primary = None
+        self.foreign = None
+
+    def field(self, name):
+        """return a field by name"""
+        try:
+            return [field for field in self.fields if field.name == name][0]
+        except IndexError as exc:
+            raise AttributeError(name) from exc
 
 
-class Model:
+class _Model(type):
+    """metaclass for base orm"""
+
+    def __new__(cls, name, supers, attrs):
+
+        if "Meta" in attrs:
+            user_meta = attrs["Meta"].__dict__
+            del attrs["Meta"]
+        else:
+            user_meta = {}
+
+        meta = attrs["_m"] = _Meta(**user_meta)
+
+        if meta.table_name is None:
+            meta.table_name = snake_to_camel(name)
+
+        fields = []
+
+        def update_fields(data):
+            for key, value in data.items():
+                if isinstance(value, Field):
+                    if key in __reserved__:
+                        raise ReservedAttributeError(key)
+                    if value.column is None:
+                        value.column = key
+                    value.name = key
+                    fields.append(value)
+
+        update_fields(attrs)
+        for sup in supers:
+            update_fields(sup.__dict__)
+
+        meta.fields = fields
+        meta.db_read = [fld for fld in fields if fld.is_database]
+        meta.db_insert = [fld for fld in meta.db_read if not fld.is_readonly]
+        meta.db_update = [fld for fld in meta.db_insert if not fld.is_primary]
+
+        primary = [fld for fld in fields if fld.is_primary]
+        if len(primary) > 1:
+            raise MultiplePrimaryKeysError()
+        if len(primary) == 1:
+            meta.primary = primary[0]
+
+        meta.foreign = [fld for fld in meta.db_read if fld.is_foreign]
+
+        return super().__new__(cls, name, supers, attrs)
+
+    @property
+    def query(cls):
+        """return query object for class"""
+        return Query(cls)
+
+
+class Model(metaclass=_Model):
     """base orm"""
 
-    __TABLENAME__ = None
-
     def __init__(self, **kwargs):
+        self._orig = {}
+        self._updated = {}
         self._values = {}
-        for field in self._fields():
+
+        for field in self._m.fields:
             if not field.is_nullable and field.default is None:
                 if field.name not in kwargs:
                     raise RequiredAttributeError(field.name)
@@ -49,12 +120,12 @@ class Model:
                 setattr(self, field.name, field.default)
         for name, value in kwargs.items():
             setattr(self, name, value)
-        self._updated = []
-        self._cache_field_values()
+
+        cache_field_values(self)
 
     def __repr__(self):
-        result = f'{self._class().__name__}('
-        if self._primary() and (val := getattr(self, self._primary().name)):
+        result = f'{self.__class__.__name__}('
+        if self._m.primary and (val := getattr(self, self._m.primary.name)):
             result += f'primary_key={val}'
         else:
             result += f'object_id={id(self)}'
@@ -66,65 +137,8 @@ class Model:
         """return instance as dict"""
         return {
             fld.name: getattr(self, fld.name)
-            for fld in self._fields()
+            for fld in self._m.fields
         }
-
-    @classmethod
-    def _fields(cls):
-        if hasattr(cls, '_field_cache'):
-            return cls._field_cache
-        fields = []
-        for name in dir(cls):
-            if name.startswith('_'):
-                continue
-            if name == 'query':
-                continue
-            value = getattr(cls, name)
-            if isinstance(value, Field):
-                if name in __reserved__:
-                    raise ReservedAttributeError(name)
-                if value.column is None:
-                    value.column = name
-                value.name = name
-                fields.append(value)
-        cls._field_cache = fields
-        return fields
-
-    @classmethod
-    def _field(cls, name):
-        try:
-            return [field for field in cls._fields() if field.name == name][0]
-        except IndexError:
-            raise AttributeError(name)
-
-    @classmethod
-    def _db_read(cls):
-        return [fld for fld in cls._fields() if fld.is_database]
-
-    @classmethod
-    def _db_insert(cls):
-        return [fld for fld in cls._db_read() if not fld.is_readonly]
-
-    @classmethod
-    def _db_update(cls):
-        return [fld for fld in cls._db_insert() if not fld.is_primary]
-
-    @classmethod
-    def _primary(cls):
-        primary = [fld for fld in cls._fields() if fld.is_primary]
-        if len(primary) > 1:
-            raise MultiplePrimaryKeysError()
-        if len(primary) == 1:
-            return primary[0]
-        return None
-
-    @classmethod
-    def _foreign(cls):
-        return [fld for fld in cls._db_read() if fld.is_foreign]
-
-    @classmethod
-    def _class(cls):
-        return cls
 
     def __getitem__(self, name):
         return self._tables[name]
@@ -140,8 +154,6 @@ class Model:
                 pass
             raise
 
-        if name == '_primary':  # special case for primary key: return Field
-            return value
         if isinstance(value, Field):
             values = object.__getattribute__(self, '_values')
             if name not in values:
@@ -167,15 +179,9 @@ class Model:
                 values[name] = attr.parse(value)
 
     @classmethod
-    def query(cls):
-        """start query on model"""
-        return Query(cls)
-
-    @classmethod
     async def load(cls, cursor, key):
-        """Load a database row by primary key.
-        """
-        query = Query(cls).where(f'{quote(cls._primary().name)}=%s')
+        """Load a database row by primary key"""
+        query = Query(cls).where(f'{quote(cls._m.primary.name)}=%s')
         return await query.execute(cursor, key, one=True)
 
     async def save(self, cursor, insert=False):
@@ -192,18 +198,20 @@ class Model:
 
            Notes:
 
-               1. On UPDATE, only changed fields, if any, are SET. A list of
-                  update field names is found in the '_updated' attribute.
+               1. On UPDATE, only changed fields, if any, are SET. A dict of
+                  {field_name: (old_value, new_value), ...} is found in the
+                  '_updated' attribute.
 
                2. This call will not change expression Fields.
         """
-        key = self._primary()
-        self._updated = []  # pylint: disable=attribute-defined-outside-init
+        key = self._m.primary
+        self._updated = {}
         cursor.query = None
         cursor.query_after = None
+        stmt = ''
         if insert or key is None or getattr(self, key.name) is None:
             new = True
-            fields = self._db_insert() if insert else self._db_update()
+            fields = self._m.db_insert if insert else self._m.db_update
             fields = [
                 f
                 for f in fields
@@ -215,7 +223,7 @@ class Model:
             ]
             stmt = ' '.join((
                 'INSERT INTO',
-                quote(self.__TABLENAME__),
+                quote(self._m.table_name),
                 '(',
                 ','.join(quote(f) for f in field_names),
                 ') VALUES (',
@@ -227,30 +235,32 @@ class Model:
             if not getattr(self, key.name):
                 raise Exception('Model UPDATE requires a primary key')
             new = False
-            fields = self._fields_to_update
-            if fields is None:
-                return self
-            stmt = ' '.join((
-                'UPDATE ',
-                quote(self.__TABLENAME__),
-                'SET',
-                ','.join([f'{quote(fld.column)}=%s' for fld in fields]),
-                'WHERE ',
-                f'{quote(key.name)}=%s'
-            ))
-            args = [getattr(self, fld.name) for fld in fields]
-            args.append(getattr(self, key.name))
+            fields = fields_to_update(self)
+            if fields is not None:
+                stmt = ' '.join((
+                    'UPDATE ',
+                    quote(self._m.table_name),
+                    'SET',
+                    ','.join([f'{quote(fld.column)}=%s' for fld in fields]),
+                    'WHERE ',
+                    f'{quote(key.name)}=%s'
+                ))
+                args = [getattr(self, fld.name) for fld in fields]
+                args.append(getattr(self, key.name))
 
         stmt = stmt.format(Q=cursor.quote)
 
         if fields:
             await cursor.execute(stmt, args, is_insert=new, pk=key.name)
-            self._cache_field_values()
             if new:
                 if not insert and key:
                     setattr(self, key.name, cursor.last_id())
             else:
-                self._updated = [field.name for field in fields]
+                self._updated = {
+                    fld.name: (self._orig[fld.name], getattr(self, fld.name))
+                    for fld in fields
+                }
+            cache_field_values(self)
 
         return self
 
@@ -266,31 +276,34 @@ class Model:
            Returns self.
         """
         if key is not None:
-            setattr(self, self._primary().name, key)
+            setattr(self, self._m.primary.name, key)
         return await self.save(cursor, insert=True)
 
     async def delete(self, cursor):
         """Delete matching row from database by primary key.
         """
         stmt = (
-            f"DELETE FROM {quote(self.__TABLENAME__)}"
-            f" WHERE {quote(self._primary().name)}=%s"
+            f"DELETE FROM {quote(self._m.table_name)}"
+            f" WHERE {quote(self._m.primary.name)}=%s"
         ).format(Q=cursor.quote)
-        await cursor.execute(stmt, getattr(self, self._primary().name))
+        await cursor.execute(stmt, getattr(self, self._m.primary.name))
 
-    def _cache_field_values(self):
-        self._orig = {
-            fld.name: getattr(self, fld.name) for
-            fld in self._db_update()
-        }
 
-    @property
-    def _fields_to_update(self):
-        fields = [
-            fld
-            for fld in self._db_update()
-            if getattr(self, fld.name) != self._orig[fld.name]
-        ]
-        if len(fields) == 0:
-            return None
-        return fields
+def cache_field_values(model):
+    """cache model field values in '_orig'"""
+    model._orig = {
+        fld.name: getattr(model, fld.name) for
+        fld in model._m.db_update
+    }
+
+
+def fields_to_update(model):
+    """return list of changed fields or None"""
+    fields = [
+        fld
+        for fld in model._m.db_update
+        if getattr(model, fld.name) != model._orig[fld.name]
+    ]
+    if len(fields) == 0:
+        return None
+    return fields

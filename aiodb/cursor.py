@@ -56,14 +56,14 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
                         serialize(value) => escaped_value
 
                 last_id - callable that returns the last auto-generated id from
-                          the most recent query
+                          the most recent INSERT
 
                 last_message - callable that returns the message from the most
                                recent query
 
                 quote - quote character surrounding table/field names
 
-                transactions - if False, don't perform transactions
+                transactions - if False, disable transactions
         """
         self._execute = execute
         self.ping = ping
@@ -78,6 +78,35 @@ class Cursor:  # pylint: disable=too-many-instance-attributes
 
         self._has_transactions = transactions
         self._transaction_depth = 0
+
+    @classmethod
+    def bind(cls, connection, transactions=True, **kwargs):
+        """bind connection to cursor by attribute name
+
+           connection   - an instance that directly maps the Cursor attributes:
+                              execute
+                              ping
+                              close
+                              serialize
+                              last_id
+                              last_message
+                              quote
+                          by name
+           transactions - if False, disable transactions
+           kwargs       - any kwarg whose key matches a Cursor parameter will
+                          be used in place of the connection attribute
+        """
+        args = [
+            kwargs.get("execute", connection.execute),
+            kwargs.get("ping", connection.ping),
+            kwargs.get("close", connection.close),
+            kwargs.get("serialize", connection.serialize),
+            kwargs.get("last_id", connection.last_id),
+            kwargs.get("last_message", connection.last_message),
+            kwargs.get("quote", connection.quote),
+            transactions,
+        ]
+        return cls(*args)
 
     async def _transaction(self, command):
         if self._has_transactions:
