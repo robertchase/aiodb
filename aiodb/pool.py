@@ -20,11 +20,18 @@ class Pool:
     async def setup(cls, connector, size=10):
         """setup a new connection pool
 
-           connector is an async function that returns one open connection to
-                     the database. a connection must support a ping():bool and
-                     a close() method in order to be managed by the pool.
+           connector - an async function that returns one open connection to
+                       the database
 
-           size is the number of connections in the pool
+                       a connection must support a ping():bool and a close()
+                       method in order to be managed by the pool
+
+           size      - the number of connections in the pool
+
+           Notes:
+               * a connection pool will create "size" new connections at init
+               * when a pooled connection is closed, it will be replaced by a
+                 new connection which is added FIFO to the pool
         """
         self = cls(connector)
 
@@ -87,4 +94,4 @@ class Pool:
         try:
             return await self._replace(connection)
         except Exception as exc:  # pylint: disable=broad-except
-            raise DatabaseReconnectError(str(exc))
+            raise DatabaseReconnectError(str(exc)) from exc

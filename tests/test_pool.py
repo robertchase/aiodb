@@ -1,3 +1,4 @@
+"""test connection pool"""
 import asyncio
 from unittest import mock
 
@@ -35,6 +36,7 @@ def test_five():
 
 
 def mock_connector(ping=True):
+    """fake database connection factory"""
     async def _connector():
         con = mock.Mock()
         con.ping = mock.AsyncMock(return_value=ping)
