@@ -11,7 +11,7 @@ from aiodb.cursor import Cursor as abstract_cursor
 def cursor():
     """return a real cursor with mocked attributes"""
     return abstract_cursor(
-        execute=mock.AsyncMock(),
+        execute=mock.AsyncMock(return_value=((),())),
         ping=mock.AsyncMock(),
         close=mock.AsyncMock(),
         serialize=str,

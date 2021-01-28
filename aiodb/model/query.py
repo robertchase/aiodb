@@ -154,7 +154,7 @@ class Query:
                     obj = table.cls(**val)
                 if tables is None:
                     primary_table = obj
-                    obj._tables = tables = {}
+                    obj._s.tables = tables = {}
                 else:
                     tables[table.alias] = obj
                 row = row[table.column_count:]

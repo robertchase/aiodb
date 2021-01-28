@@ -2,7 +2,7 @@
 # pylint: disable=protected-access
 from unittest import mock
 
-from aiodb import Model, Field, Integer
+from aiodb import Model, Field, Integer, updated
 
 from tests.conftest import run_async
 
@@ -102,7 +102,7 @@ def test_insert_updated(cursor):
 
     test = MockTable(name='a', yeah='a')
     run_async(test.save, cursor)
-    assert test._updated == {}
+    assert updated(test) == {}
 
 
 def test_update_updated(cursor):
@@ -112,12 +112,12 @@ def test_update_updated(cursor):
 
     test.name = 'test'
     run_async(test.save, cursor)
-    assert test._updated == {'name': ('a', 'test')}
+    assert updated(test) == {'name': ('a', 'test')}
 
     test.name = 'foo'
     test.yeah = 'bar'
     run_async(test.save, cursor)
-    assert test._updated == {'name': ('test', 'foo'), 'yeah': ('a', 'bar')}
+    assert updated(test) == {'name': ('test', 'foo'), 'yeah': ('a', 'bar')}
 
     run_async(test.save, cursor)  # nothing changed
-    assert test._updated == {}
+    assert updated(test) == {}

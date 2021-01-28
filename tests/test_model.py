@@ -11,7 +11,7 @@ def test_table_name():
 
     class MyTestTable1(Model):
         """test model"""
-    assert MyTestTable1._m.table_name == "my_test_table"
+    assert MyTestTable1._m.table_name == "my_test_table1"
 
     class MyTestTable2(Model):
         """test model"""
@@ -152,7 +152,7 @@ class JoinedModel(Model):
 
     def __init__(self):
         super().__init__()
-        self._tables = {'a': 'one'}
+        self._s.tables = {'a': 'one'}
 
 
 def test_join_lookup_bracket():

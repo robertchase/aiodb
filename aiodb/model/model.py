@@ -6,7 +6,7 @@ from aiodb.model.query import Query
 from aiodb.util import snake_to_camel
 
 
-__reserved__ = ('as_dict', 'delete', 'load', 'save')
+__reserved__ = ("load", "save", "delete")
 
 
 class RequiredAttributeError(AttributeError):
@@ -30,10 +30,26 @@ def quote(name):
     return '{Q}' + name + '{Q}'
 
 
+def updated(model):
+    """return dict of updated fields for model
+
+       {"name" : (old_value, new_value), ...}
+    """
+    return model._s.updated
+
+
+def as_dict(model):
+    """return the model field+values as a dict"""
+    return {
+        fld.name: getattr(self, fld.name)
+        for fld in model._m.fields
+    }
+
+
 class _Meta:  # pylint: disable=too-few-public-methods
     # pylint: disable=too-many-instance-attributes
 
-    def __init__(self, table_name=None):
+    def __init__(self, table_name=None, **kwargs):
         self.cls = None
         self.table_name = table_name
         self.fields = None
@@ -104,13 +120,21 @@ class _Model(type):
         return Query(cls)
 
 
+class _State:
+    """instance state"""
+
+    def __init__(self):
+        self.values = {}
+        self.original = {}
+        self.updated = {}
+        self.tables = {}
+
+
 class Model(metaclass=_Model):
     """base orm"""
 
     def __init__(self, **kwargs):
-        self._orig = {}
-        self._updated = {}
-        self._values = {}
+        self._s = _State()
 
         for field in self._m.fields:
             if not field.is_nullable and field.default is None:
@@ -133,32 +157,29 @@ class Model(metaclass=_Model):
         result += ')'
         return result
 
-    def as_dict(self):
-        """return instance as dict"""
-        return {
-            fld.name: getattr(self, fld.name)
-            for fld in self._m.fields
-        }
-
     def __getitem__(self, name):
-        return self._tables[name]
+        return self._s.tables[name]
 
     def __getattribute__(self, name):
-        try:
+        if name.startswith("_"):
             value = object.__getattribute__(self, name)
-        except AttributeError:
+        else:
             try:
-                # dot notation access for joined tables
-                return object.__getattribute__(self, '_tables')[name]
-            except (AttributeError, KeyError):
-                pass
-            raise
+                value = object.__getattribute__(self, name)
+            except AttributeError:
+                try:
+                    # dot notation access for joined tables
+                    return self._s.tables[name]
+                except (AttributeError, KeyError):
+                    pass
+                raise
 
-        if isinstance(value, Field):
-            values = object.__getattribute__(self, '_values')
-            if name not in values:
-                raise AttributeError(name)
-            value = values[name]
+            if isinstance(value, Field):
+                values = self._s.values
+                if name not in values:
+                    raise AttributeError(name)
+                value = values[name]
+
         return value
 
     def __setattr__(self, name, value):
@@ -168,7 +189,7 @@ class Model(metaclass=_Model):
             attr = object.__getattribute__(self, name)
             if not isinstance(attr, Field):
                 raise AttributeError(name)
-            values = object.__getattribute__(self, '_values')
+            values = self._s.values
             if value is None:
                 if not attr.is_nullable:
                     raise NoneValueError(name)
@@ -181,7 +202,7 @@ class Model(metaclass=_Model):
     @classmethod
     async def load(cls, cursor, key):
         """Load a database row by primary key"""
-        query = Query(cls).where(f'{quote(cls._m.primary.name)}=%s')
+        query = cls.query.where(f'{quote(cls._m.primary.name)}=%s')
         return await query.execute(cursor, key, one=True)
 
     async def save(self, cursor, insert=False):
@@ -200,12 +221,12 @@ class Model(metaclass=_Model):
 
                1. On UPDATE, only changed fields, if any, are SET. A dict of
                   {field_name: (old_value, new_value), ...} is found in the
-                  '_updated' attribute.
+                  '_s.updated' attribute.
 
                2. This call will not change expression Fields.
         """
         key = self._m.primary
-        self._updated = {}
+        self._s.updated = {}
         cursor.query = None
         cursor.query_after = None
         stmt = ''
@@ -256,28 +277,14 @@ class Model(metaclass=_Model):
                 if not insert and key:
                     setattr(self, key.name, cursor.last_id())
             else:
-                self._updated = {
-                    fld.name: (self._orig[fld.name], getattr(self, fld.name))
+                self._s.updated = {
+                    fld.name: (self._s.original[fld.name],
+                               getattr(self, fld.name))
                     for fld in fields
                 }
             cache_field_values(self)
 
         return self
-
-    async def insert(self, cursor, key=None):
-        """Insert object
-
-           Insert usually happens automatically when key is NOT specified; this
-           is for the case where you want to specifiy the primary key yourself.
-
-           If 'key' is specified, then the primary key value is set to this
-           value; otherwise, the current value of the primary key is used.
-
-           Returns self.
-        """
-        if key is not None:
-            setattr(self, self._m.primary.name, key)
-        return await self.save(cursor, insert=True)
 
     async def delete(self, cursor):
         """Delete matching row from database by primary key.
@@ -290,8 +297,8 @@ class Model(metaclass=_Model):
 
 
 def cache_field_values(model):
-    """cache model field values in '_orig'"""
-    model._orig = {
+    """cache model field values in '_s.original'"""
+    model._s.original = {
         fld.name: getattr(model, fld.name) for
         fld in model._m.db_update
     }
@@ -302,8 +309,6 @@ def fields_to_update(model):
     fields = [
         fld
         for fld in model._m.db_update
-        if getattr(model, fld.name) != model._orig[fld.name]
+        if getattr(model, fld.name) != model._s.original[fld.name]
     ]
-    if len(fields) == 0:
-        return None
-    return fields
+    return None if len(fields) == 0 else fields
