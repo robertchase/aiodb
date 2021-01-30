@@ -14,12 +14,11 @@ The cursor is bound to a database-specific connection for `mysql`
 imported from aiomysql.
 
 ```
-from aiodb import Cursor, Model, Field, Integer
+from aiodb import Cursor, Model, Field, Integer, as_dict
 from aiomysql import MysqlConnector
 
 
 class Test(Model):
-    __TABLENAME__ = 'test'
    id = Field(Integer, is_primary=True)
    name = Field()
 
@@ -29,7 +28,7 @@ async def main():
     cursor = Cursor.bind(con)
     t = Test(name='barney')
     await t.save(cursor)
-    print(t.as_dict())
+    print(as_dictt())
 
 
 if __name__ == '__main__':
