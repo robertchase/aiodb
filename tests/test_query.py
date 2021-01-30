@@ -9,15 +9,13 @@ from aiodb.model.query import _pair
 
 class A(Model):  # pylint: disable=invalid-name
     """test model"""
-    class Meta:  # pylint: disable=too-few-public-methods,missing-class-docstring
-        table_name = 'yikes'
+    TABLENAME = "yikes"
     id = Field(is_primary=True)
 
 
 class B(Model):  # pylint: disable=invalid-name
     """test model"""
-    class Meta:  # pylint: disable=too-few-public-methods,missing-class-docstring
-        table_name = 'yeah'
+    TABLENAME = "yeah"
     id = Field(is_primary=True)
     a_id = Field(foreign='tests.test_query.A')
     c_id = Field(foreign='tests.test_query.C')
@@ -31,8 +29,7 @@ class C(Model):  # pylint: disable=invalid-name
 
 class D(Model):  # pylint: disable=invalid-name
     """test model"""
-    class Meta:  # pylint: disable=too-few-public-methods,missing-class-docstring
-        table_name = 'd'
+    TABLENAME = "d"
     a = Field()
     b = Field(expression='NOW()')
     c = Field(expression='FN({Q}z{Q})')

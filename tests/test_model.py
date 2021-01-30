@@ -15,8 +15,7 @@ def test_table_name():
 
     class MyTestTable2(Model):
         """test model"""
-        class Meta:  # pylint: disable=too-few-public-methods,missing-class-docstring
-            table_name = "foo_bar"
+        TABLENAME = "foo_bar"
     assert MyTestTable2._m.table_name == "foo_bar"
 
 

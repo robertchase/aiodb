@@ -6,7 +6,7 @@ from aiodb.model.query import Query
 from aiodb.util import snake_to_camel
 
 
-__reserved__ = ("load", "save", "delete")
+__reserved__ = ("load", "save", "delete", "query")
 
 
 class RequiredAttributeError(AttributeError):
@@ -30,7 +30,7 @@ def quote(name):
     return '{Q}' + name + '{Q}'
 
 
-def updated(model):
+def get_updated(model):
     """return dict of updated fields for model
 
        {"name" : (old_value, new_value), ...}
@@ -41,15 +41,15 @@ def updated(model):
 def as_dict(model):
     """return the model field+values as a dict"""
     return {
-        fld.name: getattr(self, fld.name)
+        fld.name: getattr(model, fld.name)
         for fld in model._m.fields
     }
 
 
-class _Meta:  # pylint: disable=too-few-public-methods
+class _ModelState:  # pylint: disable=too-few-public-methods
     # pylint: disable=too-many-instance-attributes
 
-    def __init__(self, table_name=None, **kwargs):
+    def __init__(self, table_name=None):
         self.cls = None
         self.table_name = table_name
         self.fields = None
@@ -68,21 +68,27 @@ class _Meta:  # pylint: disable=too-few-public-methods
 
 
 class _Model(type):
-    """metaclass for base orm"""
+    """metaclass for base orm
+
+       The stuff that happens at Model class instantiation
+
+           1. determine table name
+           2. digest the Fields
+    """
 
     def __new__(cls, name, supers, attrs):
 
-        if "Meta" in attrs:
-            user_meta = attrs["Meta"].__dict__
-            del attrs["Meta"]
+        # --- table name
+        if "TABLENAME" in attrs:
+            table_name = attrs["TABLENAME"]
+            del attrs["TABLENAME"]
         else:
-            user_meta = {}
+            table_name = snake_to_camel(name)
 
-        meta = attrs["_m"] = _Meta(**user_meta)
+        # --- create the "_m" attribute to hold shared Model state
+        state = attrs["_m"] = _ModelState(table_name=table_name)
 
-        if meta.table_name is None:
-            meta.table_name = snake_to_camel(name)
-
+        # --- grab fields from supers and class
         fields = []
 
         def update_fields(data):
@@ -95,22 +101,24 @@ class _Model(type):
                     value.name = key
                     fields.append(value)
 
-        update_fields(attrs)
         for sup in supers:
             update_fields(sup.__dict__)
+        update_fields(attrs)
 
-        meta.fields = fields
-        meta.db_read = [fld for fld in fields if fld.is_database]
-        meta.db_insert = [fld for fld in meta.db_read if not fld.is_readonly]
-        meta.db_update = [fld for fld in meta.db_insert if not fld.is_primary]
+        # --- add fields to state
+        state.fields = fields
+        state.db_read = [fld for fld in fields if fld.is_database]
+        state.db_insert = [fld for fld in state.db_read if not fld.is_readonly]
+        state.db_update = [
+            fld for fld in state.db_insert if not fld.is_primary]
 
         primary = [fld for fld in fields if fld.is_primary]
         if len(primary) > 1:
             raise MultiplePrimaryKeysError()
         if len(primary) == 1:
-            meta.primary = primary[0]
+            state.primary = primary[0]
 
-        meta.foreign = [fld for fld in meta.db_read if fld.is_foreign]
+        state.foreign = [fld for fld in state.db_read if fld.is_foreign]
 
         return super().__new__(cls, name, supers, attrs)
 
@@ -120,18 +128,35 @@ class _Model(type):
         return Query(cls)
 
 
-class _State:
+class _State:  # pylint: disable=too-few-public-methods
     """instance state"""
 
     def __init__(self):
-        self.values = {}
-        self.original = {}
-        self.updated = {}
-        self.tables = {}
+        self.values = {}  # instance value store
+        self.original = {}  # cache of field values from init or save
+        self.updated = {}  # list of changes processed at most recent save
+        self.tables = {}  # dict of joined models from query
 
 
 class Model(metaclass=_Model):
-    """base orm"""
+    """base orm
+
+       Notes:
+           1. The table name is derived by converting the class name from
+              snake to camel case.  For instance, "MySpecialTable" becomes
+              "my_special_table". The TABLENAME class attribute will override
+              this behavior by directly specifiying the table name.
+
+           2. The only non "_*" attributes in the Model namespace are the
+              methods: "load", "save" and "delete", and the property "query".
+              Field names cannot be assigned to these values, and method names
+              which override these values must take the appropriate care in
+              order to maintain core functionality.
+
+           3. The Model's State is kept in the "_m" attribute and the instance
+              state is kept in the "_s" attribute.  The "_m" attribute is
+              shared with all instances.
+    """
 
     def __init__(self, **kwargs):
         self._s = _State()
@@ -218,12 +243,16 @@ class Model(metaclass=_Model):
            Returns self.
 
            Notes:
+               1. On INSERT the "_s.updated" attribute is set to
+                  {field_name: (None, value), ...} for each inserted field.
 
-               1. On UPDATE, only changed fields, if any, are SET. A dict of
-                  {field_name: (old_value, new_value), ...} is found in the
-                  '_s.updated' attribute.
+               1. On UPDATE, only changed fields -- if any -- are SET. The
+                  "_s.updated" attribute is set to
+                  {field_name: (old_value, new_value), ...} for each changed
+                  field.
 
-               2. This call will not change expression Fields.
+               2. This call will not change expression fields in the Model
+                  instance.
         """
         key = self._m.primary
         self._s.updated = {}
@@ -276,19 +305,16 @@ class Model(metaclass=_Model):
             if new:
                 if not insert and key:
                     setattr(self, key.name, cursor.last_id())
-            else:
-                self._s.updated = {
-                    fld.name: (self._s.original[fld.name],
-                               getattr(self, fld.name))
-                    for fld in fields
-                }
+            self._s.updated = {
+                fld.name: (None if new else self._s.original.get(fld.name),
+                           getattr(self, fld.name))
+                for fld in fields}
             cache_field_values(self)
 
         return self
 
     async def delete(self, cursor):
-        """Delete matching row from database by primary key.
-        """
+        """Delete matching row from database by primary key"""
         stmt = (
             f"DELETE FROM {quote(self._m.table_name)}"
             f" WHERE {quote(self._m.primary.name)}=%s"

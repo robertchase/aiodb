@@ -2,16 +2,14 @@
 # pylint: disable=protected-access
 from unittest import mock
 
-from aiodb import Model, Field, Integer, updated
+from aiodb import Model, Field, Integer, get_updated
 
 from tests.conftest import run_async
 
 
 class MockTable(Model):
     """test model"""
-
-    class Meta:  # pylint: disable=too-few-public-methods,missing-class-docstring
-        table_name = "tester"
+    TABLENAME = "tester"
 
     the_key = Field(Integer, is_primary=True)
     name = Field()
@@ -102,7 +100,7 @@ def test_insert_updated(cursor):
 
     test = MockTable(name='a', yeah='a')
     run_async(test.save, cursor)
-    assert updated(test) == {}
+    assert get_updated(test) == {"name": (None, "a"), "yeah": (None, "a")}
 
 
 def test_update_updated(cursor):
@@ -112,12 +110,12 @@ def test_update_updated(cursor):
 
     test.name = 'test'
     run_async(test.save, cursor)
-    assert updated(test) == {'name': ('a', 'test')}
+    assert get_updated(test) == {'name': ('a', 'test')}
 
     test.name = 'foo'
     test.yeah = 'bar'
     run_async(test.save, cursor)
-    assert updated(test) == {'name': ('test', 'foo'), 'yeah': ('a', 'bar')}
+    assert get_updated(test) == {'name': ('test', 'foo'), 'yeah': ('a', 'bar')}
 
     run_async(test.save, cursor)  # nothing changed
-    assert updated(test) == {}
+    assert get_updated(test) == {}
