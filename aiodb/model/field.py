@@ -26,7 +26,14 @@ class Field():  # pylint: disable=too-few-public-methods
 
     @property
     def foreign(self):
-        """return foreign reference as a class"""
-        if self.is_foreign and isinstance(self._foreign, str):
-            self._foreign = import_by_path(self._foreign)
+        """return foreign reference as a class
+
+           Note: This can't be resolved in the Model's metaclass because not
+                 all of the Model classes will have been initialized. Lazy
+                 path resolution means that the Model classes are all in
+                 place before the foreign references are dynamically imported.
+        """
+        if self.is_foreign:
+            if isinstance(self._foreign, str):
+                self._foreign = import_by_path(self._foreign)
         return self._foreign

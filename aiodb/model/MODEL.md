@@ -28,10 +28,9 @@ Here is a model that maps the `employee` table to a
 python class named `Employee`:
 
 ```
-from aiodb import Model, Field, Integer, Date
+from aiodb import Model, Field, Integer, Date, as_dict
 
 class Employee(Model):
-    ___TABLENAME__ = 'employee'
     id = Field(Integer, is_primary=True)
     name = Field()
     start_date = Field(Date)
@@ -48,7 +47,7 @@ Here is how a new `Employee` is created:
 Fred
 >>> print(employee.start_date)
 datetime.date(2020, 1, 1)
->>> print(employee.as_dict())
+>>> print(as_dict(employee))
 {'id': None, 'name': 'Fred', 'start_date' = datetime.date(2020, 1, 1)}
 ```
 
@@ -112,7 +111,7 @@ Required fields are enforced; otherwise, defaults are assigned.
 
 If you define your own constructor, be sure to use `super`.
 
-#### save - `save(cursor, insert=True)`
+#### save - `save(cursor, force_insert=True)`
 
 The `save` method saves any changes in the `Model` to the database
 referenced by `cursor`.
@@ -120,7 +119,7 @@ If the `Model` doesn't have a value for the primary key,
 then an `INSERT` is performed; otherwise, an `UPDATE` is performed.
 
 To force `INSERT` even if the primary key has a value,
-set `insert` to `True`.
+set `force_insert` to `True`.
 
 When an `INSERT` happens, if the database is responsible for
 generating the primary key, then that new primary key is stored in the
@@ -130,8 +129,8 @@ When an `UPDATE` happens, only the changed fields will be
 part of the `UPDATE`.
 If nothing is changed, then an `UPDATE` is not executed.
 After the `save` completes,
-the names of the updated fields are provided
-in the instance attribute `_updated`.
+the names and values of the updated fields are available
+using the `get_updated` helper function.
 
 #### load - `load(cursor, primary_key)`
 
@@ -144,3 +143,17 @@ The `delete` method deletes a single row from the database
 referenced by `cursor`, by doing a `DELETE` by primary key.
 
 #### query
+
+## Helper Functions
+
+#### get_updated
+
+The `get_updated` function takes a `Model` instance and returns
+a `dict` of changed fields from the most recent `save`.
+The result contains one key for each changed field whose associated value is
+a `tuple` of (`old_value`, `new_value`).
+
+#### as_dict
+
+The `as_dict` function takes a `Model` instance and returns
+a `dict` of `field_name`, `field_value` pairs.

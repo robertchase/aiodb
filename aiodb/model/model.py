@@ -50,7 +50,6 @@ class _ModelState:  # pylint: disable=too-few-public-methods
     # pylint: disable=too-many-instance-attributes
 
     def __init__(self, table_name=None):
-        self.cls = None
         self.table_name = table_name
         self.fields = None
         self.db_read = None
@@ -101,7 +100,7 @@ class _Model(type):
                     value.name = key
                     fields.append(value)
 
-        for sup in supers:
+        for sup in supers[::-1]:
             update_fields(sup.__dict__)
         update_fields(attrs)
 
@@ -123,7 +122,7 @@ class _Model(type):
         return super().__new__(cls, name, supers, attrs)
 
     @property
-    def query(cls):
+    def query(cls):  # a property on the metaclass is a "classproperty"
         """return query object for class"""
         return Query(cls)
 
@@ -173,13 +172,19 @@ class Model(metaclass=_Model):
         cache_field_values(self)
 
     def __repr__(self):
-        result = f'{self.__class__.__name__}('
-        if self._m.primary and (val := getattr(self, self._m.primary.name)):
-            result += f'primary_key={val}'
+        key = self._m.primary
+        if key:
+            val = getattr(self, key.name)
         else:
-            result += f'object_id={id(self)}'
+            val = None
 
-        result += ')'
+        result = f"{self.__class__.__name__}("
+        if val:
+            result += f"primary_key={val}"
+        else:
+            result += f"object_id={id(self)}"
+
+        result += ")"
         return result
 
     def __getitem__(self, name):
@@ -230,15 +235,15 @@ class Model(metaclass=_Model):
         query = cls.query.where(f'{quote(cls._m.primary.name)}=%s')
         return await query.execute(cursor, key, one=True)
 
-    async def save(self, cursor, insert=False):
+    async def save(self, cursor, force_insert=False):
         """Save object by primary key
 
            If the primary key has a value, an UPDATE is performed; otherwise,
            an INSERT is performed and the auto-generated primary key value is
            added to the object.
 
-           To force INSERT even if the primary key has a value, set 'insert'
-           to True.
+           To force INSERT even when the primary key has a value, set
+           'force_insert' to True.
 
            Returns self.
 
@@ -259,9 +264,23 @@ class Model(metaclass=_Model):
         cursor.query = None
         cursor.query_after = None
         stmt = ''
-        if insert or key is None or getattr(self, key.name) is None:
-            new = True
-            fields = self._m.db_insert if insert else self._m.db_update
+
+        if force_insert:
+            if not key:
+                raise Exception("forced insert not valid without primary key")
+            if getattr(self, key.name) is None:
+                raise Exception(
+                    "forced insert not valid without a primary key value")
+            is_insert = True
+        elif key is None:
+            is_insert = True
+        elif getattr(self, key.name) is None:
+            is_insert = True
+        else:
+            is_insert = False
+
+        if is_insert:
+            fields = self._m.db_insert if force_insert else self._m.db_update
             fields = [
                 f
                 for f in fields
@@ -282,11 +301,8 @@ class Model(metaclass=_Model):
             ))
             args = [getattr(self, f.name) for f in fields]
         else:
-            if not getattr(self, key.name):
-                raise Exception('Model UPDATE requires a primary key')
-            new = False
             fields = fields_to_update(self)
-            if fields is not None:
+            if fields:
                 stmt = ' '.join((
                     'UPDATE ',
                     quote(self._m.table_name),
@@ -298,16 +314,22 @@ class Model(metaclass=_Model):
                 args = [getattr(self, fld.name) for fld in fields]
                 args.append(getattr(self, key.name))
 
-        stmt = stmt.format(Q=cursor.quote)
-
         if fields:
-            await cursor.execute(stmt, args, is_insert=new, pk=key.name)
-            if new:
-                if not insert and key:
-                    setattr(self, key.name, cursor.last_id())
+            stmt = stmt.format(Q=cursor.quote)
+            await cursor.execute(stmt, args,
+                                 is_insert=is_insert,
+                                 pk=key.name if key else None)
+
+            # grab database-assigned primary key
+            if is_insert:
+                if not force_insert:
+                    if key:
+                        setattr(self, key.name, cursor.last_id())
+
             self._s.updated = {
-                fld.name: (None if new else self._s.original.get(fld.name),
-                           getattr(self, fld.name))
+                fld.name: (
+                    None if is_insert else self._s.original.get(fld.name),
+                    getattr(self, fld.name))
                 for fld in fields}
             cache_field_values(self)
 
