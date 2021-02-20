@@ -30,6 +30,11 @@ def quote(name):
     return '{Q}' + name + '{Q}'
 
 
+def get_tablename(model):
+    """return the model's table name"""
+    return model._m.table_name
+
+
 def get_updated(model):
     """return dict of updated fields for model
 
@@ -236,7 +241,9 @@ class Model(metaclass=_Model):
         return await query.execute(cursor, key, one=True)
 
     async def save(self, cursor, force_insert=False):
-        """Save object by primary key
+        """Insert or update database with values in model
+
+           If there is no primary key, then an INSERT is performed.
 
            If the primary key has a value, an UPDATE is performed; otherwise,
            an INSERT is performed and the auto-generated primary key value is
@@ -267,10 +274,10 @@ class Model(metaclass=_Model):
 
         if force_insert:
             if not key:
-                raise Exception("forced insert not valid without primary key")
+                raise Exception("force_insert is not valid without primary key")
             if getattr(self, key.name) is None:
                 raise Exception(
-                    "forced insert not valid without a primary key value")
+                    "force_insert is not valid without a primary key value")
             is_insert = True
         elif key is None:
             is_insert = True
